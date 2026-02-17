@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Project Detail</title></head>
+<body>
+  <h1>Project {{ project['name'] }}</h1>
+  <p>ID: {{ project['project_id'] }}</p>
+  <h2>Revisions</h2>
+  <ul>
+    {% for r in revisions %}
+      <li>
+        <a href="/projects/{{ project['project_id'] }}/revisions/{{ r['revision_id'] }}">{{ r['revision_id'] }}</a>
+        - {{ r['created_at'] }} ({{ r['note'] or '' }})
+      </li>
+    {% endfor %}
+  </ul>
+  <p>Diff: /projects/{{ project['project_id'] }}/diff?rev1=<id1>&rev2=<id2></p>
+</body>
+</html>

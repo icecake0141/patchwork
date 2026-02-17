@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Trial</title></head>
+<body>
+  <h1>Trial Result</h1>
+  <p>Sessions: {{ result.metrics.session_count }} / Modules: {{ result.metrics.module_count }}</p>
+  <p><a href="/trial/export/result.json">result.json</a> | <a href="/trial/export/sessions.csv">sessions.csv</a></p>
+
+  <h2>Save</h2>
+  <form action="/save" method="post">
+    <input name="project_name" placeholder="project name" required>
+    <input name="note" placeholder="revision note">
+    <button type="submit">Save</button>
+  </form>
+
+  <h2>Topology</h2>
+  <div>{{ result.topology_svg | safe }}</div>
+
+  <h2>Session Preview (first 50)</h2>
+  <table border="1" cellspacing="0" cellpadding="4">
+    <tr><th>session_id</th><th>media</th><th>src</th><th>dst</th><th>port</th></tr>
+    {% for s in result.sessions[:50] %}
+    <tr>
+      <td>{{ s.session_id }}</td><td>{{ s.media }}</td>
+      <td>{{ s.src_rack }} U{{ s.src_u }}S{{ s.src_slot }}</td>
+      <td>{{ s.dst_rack }} U{{ s.dst_u }}S{{ s.dst_slot }}</td>
+      <td>{{ s.src_port }} ↔ {{ s.dst_port }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
