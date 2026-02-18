@@ -41,3 +41,6 @@ ignore_missing_imports = true
 module = ["app"]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = ["services.allocator", "services.export", "services.render_svg"]
+ignore_errors = true

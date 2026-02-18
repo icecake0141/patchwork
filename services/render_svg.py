@@ -52,11 +52,11 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
     return "\n".join(lines)
 
 
-def render_pair_detail_svg(result: dict[str, Any], rack_a: str, rack_b: str) -> str:
+def render_pair_detail_svg(result: dict[str, object], rack_a: str, rack_b: str) -> str:
     sessions = [
         s
-        for s in cast(list[dict[str, Any]], result["sessions"])
-        if set((str(s["src_rack"]), str(s["dst_rack"]))) == set((rack_a, rack_b))
+        for s in result["sessions"]
+        if set((s["src_rack"], s["dst_rack"])) == set((rack_a, rack_b))
     ]
     lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900">']
     lines.append(f'<text x="20" y="30" font-size="20">Pair Detail {rack_a} ↔ {rack_b}</text>')

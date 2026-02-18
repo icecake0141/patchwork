@@ -25,7 +25,7 @@ def result_json_payload(project_yaml_text: str, result: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
-def sessions_csv(result: dict[str, Any], project_id: str, revision_id: str | None = None) -> str:
+def sessions_csv(result: dict[str, object], project_id: str, revision_id: str | None = None) -> str:
     output = io.StringIO()
     columns = [
         "project_id",

@@ -56,7 +56,7 @@ def _ordered_pair(a: str, b: str) -> tuple[str, str]:
 
 
 def _add_panel_if_needed(
-    panels: dict[tuple[str, int], dict[str, Any]], rack_id: str, u: int
+    panels: dict[tuple[str, int], dict[str, object]], rack_id: str, u: int
 ) -> None:
     key = (rack_id, u)
     if key not in panels:
