@@ -1,304 +1,195 @@
-# Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 # This file was created or modified with the assistance of an AI (Large Language Model).
-# Review required for correctness, security, and licensing.
+"""Flask WebUI for patchwork rack-to-rack cabling assistant."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from hashlib import sha256
+import json
+import os
 from uuid import uuid4
 
 import yaml
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
 
-from db import get_connection, init_db
-from models import ProjectYaml
-from services.allocator import allocate_project, stable_id
-from services.export import result_json_payload, sessions_csv
+from db import Database
+from models import ProjectInput
+from services.allocator import allocate
+from services.export import result_json, sessions_csv
 from services.render_svg import render_pair_detail_svg, render_rack_panels_svg, render_topology_svg
 
-app = Flask(__name__)
-app.secret_key = "dev-only-secret"
-app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
-TRIAL_RESULTS: dict[str, dict[str, object]] = {}
 
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
+    app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
 
-@app.get("/")
-def index() -> str:
-    return redirect(url_for("upload"))
+    db = Database(os.environ.get("PATCHWORK_DB", "patchwork.db"))
+    db.init_db()
 
-
-@app.route("/upload", methods=["GET", "POST"])
-def upload() -> str:
-    if request.method == "GET":
-        return render_template("upload.html")
-
-    uploaded = request.files.get("project_yaml")
-    if uploaded is None:
-        return render_template("upload.html", error="project.yaml を選択してください")
-
-    text = uploaded.read().decode("utf-8")
-    try:
-        parsed = yaml.safe_load(text)
-        project = ProjectYaml.model_validate(parsed)
-    except Exception as exc:  # noqa: BLE001
-        return render_template("upload.html", error=str(exc))
-
-    result = allocate_project(project)
-    result["project_yaml"] = text
-    result["input_hash"] = sha256(text.encode("utf-8")).hexdigest()
-    result["topology_svg"] = render_topology_svg(result)
-    rack_ids = [rack.id for rack in project.racks]
-    result["rack_svgs"] = {rack_id: render_rack_panels_svg(result, rack_id) for rack_id in rack_ids}
-    pair_keys = {
-        tuple(sorted((session_row["src_rack"], session_row["dst_rack"])))
-        for session_row in result["sessions"]
-    }
-    result["pair_svgs"] = {f"{a}__{b}": render_pair_detail_svg(result, a, b) for a, b in pair_keys}
-    trial_id = str(uuid4())
-    TRIAL_RESULTS[trial_id] = result
-    session["trial_id"] = trial_id
-    return redirect(url_for("trial"))
-
-
-@app.get("/trial")
-def trial() -> str:
-    trial_id = session.get("trial_id")
-    if trial_id is None or trial_id not in TRIAL_RESULTS:
-        return redirect(url_for("upload"))
-    result = TRIAL_RESULTS[trial_id]
-    return render_template("trial.html", result=result, trial_id=trial_id)
-
-
-@app.post("/save")
-def save() -> str:
-    trial_id = session.get("trial_id")
-    if trial_id is None or trial_id not in TRIAL_RESULTS:
+    @app.get("/")
+    def index() -> str:
         return redirect(url_for("upload"))
 
-    project_name = request.form.get("project_name", "unnamed-project")
-    note = request.form.get("note", "")
-    result = TRIAL_RESULTS[trial_id]
-    timestamp = datetime.now(timezone.utc).isoformat()
-    project_id = stable_id(f"project|{project_name}")
-    revision_id = stable_id(f"revision|{project_id}|{timestamp}|{result['input_hash']}")
+    @app.route("/upload", methods=["GET", "POST"])
+    def upload() -> str | Response:
+        if request.method == "POST":
+            file = request.files.get("project_yaml")
+            if not file or not file.filename:
+                flash("Please select project.yaml")
+                return redirect(url_for("upload"))
+            raw = file.read().decode("utf-8")
+            data = yaml.safe_load(raw)
+            project = ProjectInput.model_validate(data)
+            trial_id = str(uuid4())
+            result = allocate(project)
+            session["trial_id"] = trial_id
+            session[f"trial:{trial_id}:input_yaml"] = raw
+            session[f"trial:{trial_id}:result"] = json.dumps(result, default=str)
+            return redirect(url_for("trial"))
+        projects = db.list_projects()
+        return render_template("upload.html", projects=projects)
 
-    with get_connection() as connection:
-        connection.execute(
-            "INSERT OR IGNORE INTO project(project_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (project_id, project_name, timestamp, timestamp),
-        )
-        connection.execute(
-            "UPDATE project SET updated_at = ? WHERE project_id = ?",
-            (timestamp, project_id),
-        )
-        connection.execute(
-            "INSERT INTO revision(revision_id, project_id, created_at, note, input_yaml, input_hash) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                revision_id,
-                project_id,
-                timestamp,
-                note,
-                result["project_yaml"],
-                result["input_hash"],
-            ),
-        )
-
-        for panel in result["panels"]:
-            connection.execute(
-                "INSERT INTO panel(panel_id, revision_id, rack_id, u, slots_per_u) VALUES (?, ?, ?, ?, ?)",
-                (
-                    panel["panel_id"],
-                    revision_id,
-                    panel["rack_id"],
-                    panel["u"],
-                    panel["slots_per_u"],
-                ),
-            )
-        for module in result["modules"]:
-            connection.execute(
-                "INSERT INTO module(module_id, revision_id, rack_id, panel_u, slot, module_type, fiber_kind, polarity_variant, peer_rack_id, dedicated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    module["module_id"],
-                    revision_id,
-                    module["rack_id"],
-                    module["panel_u"],
-                    module["slot"],
-                    module["module_type"],
-                    module["fiber_kind"],
-                    module["polarity_variant"],
-                    module["peer_rack_id"],
-                    module["dedicated"],
-                ),
-            )
-        for cable in result["cables"]:
-            connection.execute(
-                "INSERT INTO cable(cable_id, revision_id, cable_type, fiber_kind, polarity_type) VALUES (?, ?, ?, ?, ?)",
-                (
-                    cable["cable_id"],
-                    revision_id,
-                    cable["cable_type"],
-                    cable["fiber_kind"],
-                    cable["polarity_type"],
-                ),
-            )
-        for session_row in result["sessions"]:
-            label_a = f"{session_row['src_rack']}U{session_row['src_u']}S{session_row['src_slot']}P{session_row['src_port']}"
-            label_b = f"{session_row['dst_rack']}U{session_row['dst_u']}S{session_row['dst_slot']}P{session_row['dst_port']}"
-            connection.execute(
-                "INSERT INTO session(session_id, revision_id, media, cable_id, adapter_type, label_a, label_b, src_rack, src_face, src_u, src_slot, src_port, dst_rack, dst_face, dst_u, dst_slot, dst_port, fiber_a, fiber_b, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    session_row["session_id"],
-                    revision_id,
-                    session_row["media"],
-                    session_row["cable_id"],
-                    session_row["adapter_type"],
-                    label_a,
-                    label_b,
-                    session_row["src_rack"],
-                    session_row["src_face"],
-                    session_row["src_u"],
-                    session_row["src_slot"],
-                    session_row["src_port"],
-                    session_row["dst_rack"],
-                    session_row["dst_face"],
-                    session_row["dst_u"],
-                    session_row["dst_slot"],
-                    session_row["dst_port"],
-                    session_row["fiber_a"],
-                    session_row["fiber_b"],
-                    session_row["notes"],
-                ),
-            )
-        connection.commit()
-
-    return redirect(url_for("project_detail", project_id=project_id))
-
-
-@app.get("/projects/<project_id>")
-def project_detail(project_id: str) -> str:
-    with get_connection() as connection:
-        project_row = connection.execute(
-            "SELECT project_id, name, created_at, updated_at FROM project WHERE project_id = ?",
-            (project_id,),
-        ).fetchone()
-        if project_row is None:
+    @app.get("/trial")
+    def trial() -> str | Response:
+        trial_id = session.get("trial_id")
+        if not trial_id:
+            flash("No active trial")
             return redirect(url_for("upload"))
-        revisions = connection.execute(
-            "SELECT revision_id, created_at, note FROM revision WHERE project_id = ? ORDER BY created_at DESC",
-            (project_id,),
-        ).fetchall()
-    return render_template("project_detail.html", project=project_row, revisions=revisions)
-
-
-@app.get("/projects/<project_id>/revisions/<revision_id>")
-def revision_detail(project_id: str, revision_id: str) -> str:
-    with get_connection() as connection:
-        revision = connection.execute(
-            "SELECT revision_id, input_yaml, input_hash FROM revision WHERE revision_id = ? AND project_id = ?",
-            (revision_id, project_id),
-        ).fetchone()
-        sessions = connection.execute(
-            "SELECT * FROM session WHERE revision_id = ? ORDER BY session_id LIMIT 200",
-            (revision_id,),
-        ).fetchall()
-    if revision is None:
-        return redirect(url_for("project_detail", project_id=project_id))
-    return render_template("revision_detail.html", revision=revision, sessions=sessions)
-
-
-@app.get("/projects/<project_id>/diff")
-def revision_diff(project_id: str) -> str:
-    rev1 = request.args.get("rev1")
-    rev2 = request.args.get("rev2")
-    if rev1 is None or rev2 is None:
-        return redirect(url_for("project_detail", project_id=project_id))
-
-    with get_connection() as connection:
-        left = connection.execute("SELECT * FROM session WHERE revision_id = ?", (rev1,)).fetchall()
-        right = connection.execute(
-            "SELECT * FROM session WHERE revision_id = ?", (rev2,)
-        ).fetchall()
-
-    left_by_id = {row["session_id"]: dict(row) for row in left}
-    right_by_id = {row["session_id"]: dict(row) for row in right}
-    added = sorted(set(right_by_id) - set(left_by_id))
-    removed = sorted(set(left_by_id) - set(right_by_id))
-    modified = [
-        sid
-        for sid in sorted(set(left_by_id).intersection(right_by_id))
-        if left_by_id[sid] != right_by_id[sid]
-    ]
-
-    def physical_key(row: dict[str, object]) -> tuple[object, ...]:
-        return (
-            row["media"],
-            row["src_rack"],
-            row["src_face"],
-            row["src_u"],
-            row["src_slot"],
-            row["src_port"],
-            row["dst_rack"],
-            row["dst_face"],
-            row["dst_u"],
-            row["dst_slot"],
-            row["dst_port"],
+        result = json.loads(session[f"trial:{trial_id}:result"])
+        topology_svg = render_topology_svg(result)
+        racks = sorted({p["rack_id"] for p in result["panels"]})
+        rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
+        return render_template(
+            "trial.html", result=result, topology_svg=topology_svg, rack_svgs=rack_svgs
         )
 
-    left_phys = {physical_key(v): k for k, v in left_by_id.items()}
-    right_phys = {physical_key(v): k for k, v in right_by_id.items()}
-    physical_added = sorted(set(right_phys) - set(left_phys))
-    physical_removed = sorted(set(left_phys) - set(right_phys))
-    collisions = [
-        k for k in set(left_phys).intersection(right_phys) if left_phys[k] != right_phys[k]
-    ]
+    @app.post("/save")
+    def save() -> Response:
+        trial_id = session.get("trial_id")
+        if not trial_id:
+            flash("No active trial")
+            return redirect(url_for("upload"))
+        project_name = (
+            request.form.get("project_name", "untitled-project").strip() or "untitled-project"
+        )
+        note = request.form.get("note")
+        input_yaml = session[f"trial:{trial_id}:input_yaml"]
+        result = json.loads(session[f"trial:{trial_id}:result"])
+        project_id, revision_id = db.save_revision(project_name, note, input_yaml, result)
+        flash(f"Saved revision {revision_id}")
+        return redirect(url_for("project_detail", project_id=project_id, revision_id=revision_id))
 
-    return render_template(
-        "diff.html",
-        project_id=project_id,
-        rev1=rev1,
-        rev2=rev2,
-        logical={"added": added, "removed": removed, "modified": modified},
-        physical={"added": physical_added, "removed": physical_removed, "collisions": collisions},
-    )
+    @app.get("/projects/<project_id>")
+    def project_detail(project_id: str) -> str:
+        revision_id = request.args.get("revision_id")
+        revisions = db.list_revisions(project_id)
+        chosen = (
+            db.get_revision(revision_id) if revision_id else (revisions[0] if revisions else None)
+        )
+        result = json.loads(chosen["result_json"]) if chosen else None
+        return render_template(
+            "project_detail.html",
+            project_id=project_id,
+            revisions=revisions,
+            chosen=chosen,
+            result=result,
+        )
 
+    @app.get("/revisions/<revision_id>/export/sessions.csv")
+    def export_sessions(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        csv_text = sessions_csv(result, rev["project_id"], revision_id)
+        return Response(
+            csv_text,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={revision_id}_sessions.csv"},
+        )
 
-@app.get("/trial/export/result.json")
-def trial_export_result_json() -> tuple[str, int, dict[str, str]]:
-    trial_id = session.get("trial_id")
-    if trial_id is None or trial_id not in TRIAL_RESULTS:
-        return ("not found", 404, {})
-    result = TRIAL_RESULTS[trial_id]
-    return (
-        result_json_payload(str(result["project_yaml"]), result),
-        200,
-        {"Content-Type": "application/json"},
-    )
+    @app.get("/revisions/<revision_id>/export/result.json")
+    def export_result(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        return Response(result_json(json.loads(rev["result_json"])), mimetype="application/json")
 
+    @app.get("/diff/<project_id>")
+    def diff(project_id: str) -> str:
+        rev1_id = request.args.get("rev1")
+        rev2_id = request.args.get("rev2")
+        revisions = db.list_revisions(project_id)
+        logical: dict[str, list[dict[str, str]]] = {"added": [], "removed": [], "modified": []}
+        physical: dict[str, list[dict[str, str]]] = {"added": [], "removed": [], "collisions": []}
+        if rev1_id and rev2_id:
+            rev1 = db.get_revision(rev1_id)
+            rev2 = db.get_revision(rev2_id)
+            if rev1 and rev2:
+                s1 = {s["session_id"]: s for s in json.loads(rev1["result_json"])["sessions"]}
+                s2 = {s["session_id"]: s for s in json.loads(rev2["result_json"])["sessions"]}
+                logical["added"] = [s2[k] for k in sorted(set(s2) - set(s1))]
+                logical["removed"] = [s1[k] for k in sorted(set(s1) - set(s2))]
+                logical["modified"] = [s2[k] for k in sorted(set(s1) & set(s2)) if s1[k] != s2[k]]
+                p1 = {
+                    (
+                        s["media"],
+                        s["src_rack"],
+                        s["src_face"],
+                        s["src_u"],
+                        s["src_slot"],
+                        s["src_port"],
+                        s["dst_rack"],
+                        s["dst_face"],
+                        s["dst_u"],
+                        s["dst_slot"],
+                        s["dst_port"],
+                    ): s
+                    for s in s1.values()
+                }
+                p2 = {
+                    (
+                        s["media"],
+                        s["src_rack"],
+                        s["src_face"],
+                        s["src_u"],
+                        s["src_slot"],
+                        s["src_port"],
+                        s["dst_rack"],
+                        s["dst_face"],
+                        s["dst_u"],
+                        s["dst_slot"],
+                        s["dst_port"],
+                    ): s
+                    for s in s2.values()
+                }
+                physical["added"] = [p2[k] for k in sorted(set(p2) - set(p1))]
+                physical["removed"] = [p1[k] for k in sorted(set(p1) - set(p2))]
+                physical["collisions"] = [
+                    p2[k]
+                    for k in sorted(set(p1) & set(p2))
+                    if p1[k]["session_id"] != p2[k]["session_id"]
+                ]
+        return render_template(
+            "diff.html",
+            project_id=project_id,
+            revisions=revisions,
+            logical=logical,
+            physical=physical,
+            rev1_id=rev1_id,
+            rev2_id=rev2_id,
+        )
 
-@app.get("/trial/export/sessions.csv")
-def trial_export_sessions_csv() -> tuple[str, int, dict[str, str]]:
-    trial_id = session.get("trial_id")
-    if trial_id is None or trial_id not in TRIAL_RESULTS:
-        return ("not found", 404, {})
-    result = TRIAL_RESULTS[trial_id]
-    project_id = stable_id(f"project|{result['project']['name']}")
-    return (sessions_csv(result, project_id), 200, {"Content-Type": "text/csv"})
+    @app.get("/pair-svg/<revision_id>/<rack_a>/<rack_b>")
+    def pair_svg(revision_id: str, rack_a: str, rack_b: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        return Response(render_pair_detail_svg(result, rack_a, rack_b), mimetype="image/svg+xml")
 
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return app
 
 
 if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    create_app().run(host="0.0.0.0", port=5000, debug=True)
