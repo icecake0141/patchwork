@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -7,5 +8,10 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+=======
+# Copyright 2026 Patchwork Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+>>>>>>> origin/main
 # This file was created or modified with the assistance of an AI (Large Language Model).
 # Review required for correctness, security, and licensing.

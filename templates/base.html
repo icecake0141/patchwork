@@ -1,0 +1,22 @@
+{# SPDX-License-Identifier: Apache-2.0 #}
+{# This file was created or modified with the assistance of an AI (Large Language Model). Review required for correctness, security, and licensing. #}
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Patchwork Trial App</title>
+  </head>
+  <body>
+    <h1>Patchwork Trial App</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li><strong>{{ category }}</strong>: {{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </body>
+</html>

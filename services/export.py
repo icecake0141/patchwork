@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -7,12 +8,18 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+=======
+# Copyright 2026 Patchwork Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+>>>>>>> origin/main
 # This file was created or modified with the assistance of an AI (Large Language Model).
 # Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
 import csv
+<<<<<<< HEAD
 import io
 import json
 from hashlib import sha256
@@ -63,3 +70,21 @@ def sessions_csv(result: dict[str, object], project_id: str, revision_id: str | 
         )
         writer.writerow({col: session.get(col, "") for col in columns})
     return output.getvalue()
+=======
+import json
+from pathlib import Path
+
+
+def export_csv(result: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fp:
+        writer = csv.DictWriter(fp, fieldnames=["worker", "task", "score"])
+        writer.writeheader()
+        for row in result.get("allocations", []):
+            writer.writerow(row)
+
+
+def export_result_json(result: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+>>>>>>> origin/main
