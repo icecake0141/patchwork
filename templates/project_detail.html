@@ -1,17 +1,18 @@
-{# SPDX-License-Identifier: Apache-2.0 #}
-{# This file was created or modified with the assistance of an AI (Large Language Model). Review required for correctness, security, and licensing. #}
-{% extends "base.html" %}
-{% block content %}
-<h2>Project Detail</h2>
-<p>project_id: {{ project['id'] }}</p>
-<p>name: {{ project['name'] }}</p>
-<table border="1" cellpadding="4">
-  <thead><tr><th>worker</th><th>task</th><th>score</th></tr></thead>
-  <tbody>
-    {% for row in allocations %}
-      <tr><td>{{ row['worker'] }}</td><td>{{ row['task'] }}</td><td>{{ row['score'] }}</td></tr>
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Project Detail</title></head>
+<body>
+  <h1>Project {{ project['name'] }}</h1>
+  <p>ID: {{ project['project_id'] }}</p>
+  <h2>Revisions</h2>
+  <ul>
+    {% for r in revisions %}
+      <li>
+        <a href="/projects/{{ project['project_id'] }}/revisions/{{ r['revision_id'] }}">{{ r['revision_id'] }}</a>
+        - {{ r['created_at'] }} ({{ r['note'] or '' }})
+      </li>
     {% endfor %}
-  </tbody>
-</table>
-<a href="{{ url_for('upload') }}">Uploadに戻る</a>
-{% endblock %}
+  </ul>
+  <p>Diff: /projects/{{ project['project_id'] }}/diff?rev1=<id1>&rev2=<id2></p>
+</body>
+</html>
