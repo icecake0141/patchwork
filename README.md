@@ -29,6 +29,11 @@ ruff check .
 mypy .
 pytest -q
 pre-commit run --all-files
+```
+
+## PR workflow
+
+Use `.github/pull_request_template.md` to avoid placeholder PR descriptions and keep required LLM/review/validation checklist items in every PR.
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- This file was created or modified with the assistance of an AI (Large Language Model). -->
 # Patchwork Flask Skeleton (spec 15.1 起点)
