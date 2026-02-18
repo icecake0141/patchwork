@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
   "flask>=3.0.0",
   "pyyaml>=6.0.1",
+  "pydantic>=2.10.0",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,9 @@ dev = [
   "black>=24.0.0",
   "pre-commit>=3.7.0",
 ]
+
+[tool.setuptools]
+packages = ["services"]
 
 [tool.black]
 line-length = 100
