@@ -1,0 +1,31 @@
+<!--
+Copyright 2026 Patchwork Authors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Project Detail</title></head>
+<body>
+  <h1>Project {{ project['name'] }}</h1>
+  <p>ID: {{ project['project_id'] }}</p>
+  <h2>Revisions</h2>
+  <ul>
+    {% for r in revisions %}
+      <li>
+        <a href="/projects/{{ project['project_id'] }}/revisions/{{ r['revision_id'] }}">{{ r['revision_id'] }}</a>
+        - {{ r['created_at'] }} ({{ r['note'] or '' }})
+      </li>
+    {% endfor %}
+  </ul>
+  <p>Diff: /projects/{{ project['project_id'] }}/diff?rev1=<id1>&rev2=<id2></p>
+</body>
+</html>
