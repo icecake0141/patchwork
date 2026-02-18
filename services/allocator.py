@@ -17,6 +17,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import sha256
 from math import ceil
+from typing import Any
 
 from models import ProjectYaml
 
@@ -68,12 +69,12 @@ def _add_panel_if_needed(
         }
 
 
-def allocate_project(project: ProjectYaml) -> dict[str, object]:
+def allocate_project(project: ProjectYaml) -> dict[str, Any]:
     rack_allocators = {rack.id: RackAllocator(rack.id) for rack in project.racks}
-    panels: dict[tuple[str, int], dict[str, object]] = {}
-    modules: list[dict[str, object]] = []
-    cables: dict[str, dict[str, object]] = {}
-    sessions: list[dict[str, object]] = []
+    panels: dict[tuple[str, int], dict[str, Any]] = {}
+    modules: list[dict[str, Any]] = []
+    cables: dict[str, dict[str, Any]] = {}
+    sessions: list[dict[str, Any]] = []
 
     by_pair_media: dict[tuple[str, str, str], int] = defaultdict(int)
     for demand in project.demands:
@@ -297,12 +298,12 @@ def allocate_project(project: ProjectYaml) -> dict[str, object]:
                 }
             )
 
-    sessions.sort(key=lambda row: row["session_id"])
+    sessions.sort(key=lambda row: str(row["session_id"]))
     return {
         "project": {"name": project.project.name, "version": project.version},
-        "panels": sorted(panels.values(), key=lambda p: (str(p["rack_id"]), int(p["u"]))),
+        "panels": sorted(panels.values(), key=lambda p: (str(p["rack_id"]), int(str(p["u"])))),
         "modules": sorted(
-            modules, key=lambda m: (str(m["rack_id"]), int(m["panel_u"]), int(m["slot"]))
+            modules, key=lambda m: (str(m["rack_id"]), int(str(m["panel_u"])), int(str(m["slot"])))
         ),
         "cables": sorted(cables.values(), key=lambda c: str(c["cable_id"])),
         "sessions": sessions,

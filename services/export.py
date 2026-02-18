@@ -16,9 +16,10 @@ import csv
 import io
 import json
 from hashlib import sha256
+from typing import Any, cast
 
 
-def result_json_payload(project_yaml_text: str, result: dict[str, object]) -> str:
+def result_json_payload(project_yaml_text: str, result: dict[str, Any]) -> str:
     payload = dict(result)
     payload["input_hash"] = sha256(project_yaml_text.encode("utf-8")).hexdigest()
     return json.dumps(payload, indent=2, sort_keys=True)
@@ -51,7 +52,8 @@ def sessions_csv(result: dict[str, object], project_id: str, revision_id: str | 
     ]
     writer = csv.DictWriter(output, fieldnames=columns)
     writer.writeheader()
-    for row in result["sessions"]:
+    sessions = cast(list[dict[str, Any]], result["sessions"])
+    for row in sessions:
         session = dict(row)
         session["project_id"] = project_id
         session["revision_id"] = revision_id or ""

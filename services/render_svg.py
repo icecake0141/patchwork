@@ -13,11 +13,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Any, cast
 
 
-def render_topology_svg(result: dict[str, object]) -> str:
+def render_topology_svg(result: dict[str, Any]) -> str:
     counts: dict[tuple[str, str, str], int] = defaultdict(int)
-    for session in result["sessions"]:
+    sessions = cast(list[dict[str, Any]], result["sessions"])
+    for session in sessions:
         pair = tuple(sorted((session["src_rack"], session["dst_rack"])))
         key = (pair[0], pair[1], session["media"])
         counts[key] += 1
@@ -32,8 +34,10 @@ def render_topology_svg(result: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def render_rack_panels_svg(result: dict[str, object], rack_id: str) -> str:
-    modules = [m for m in result["modules"] if m["rack_id"] == rack_id]
+def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
+    modules = [
+        m for m in cast(list[dict[str, Any]], result["modules"]) if str(m["rack_id"]) == rack_id
+    ]
     lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="900" height="800">']
     lines.append(f'<text x="20" y="30" font-size="20">Rack {rack_id} Panels</text>')
     y = 60
