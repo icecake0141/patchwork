@@ -156,7 +156,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                 [
                     {
                         "module_id": deterministic_id(
-                            "mod", f"{a}|{slot_a.u}|{slot_a.slot}|mpo|{b}|{i+1}"
+                            "mod", f"{a}|{slot_a.u}|{slot_a.slot}|mpo|{b}|{i + 1}"
                         ),
                         "rack_id": a,
                         "panel_u": slot_a.u,
@@ -169,7 +169,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                     },
                     {
                         "module_id": deterministic_id(
-                            "mod", f"{b}|{slot_b.u}|{slot_b.slot}|mpo|{a}|{i+1}"
+                            "mod", f"{b}|{slot_b.u}|{slot_b.slot}|mpo|{a}|{i + 1}"
                         ),
                         "rack_id": b,
                         "panel_u": slot_b.u,
@@ -215,7 +215,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                     [
                         {
                             "module_id": deterministic_id(
-                                "mod", f"{a}|{slot_a.u}|{slot_a.slot}|{endpoint}|{b}|{i+1}"
+                                "mod", f"{a}|{slot_a.u}|{slot_a.slot}|{endpoint}|{b}|{i + 1}"
                             ),
                             "rack_id": a,
                             "panel_u": slot_a.u,
@@ -228,7 +228,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         },
                         {
                             "module_id": deterministic_id(
-                                "mod", f"{b}|{slot_b.u}|{slot_b.slot}|{endpoint}|{a}|{i+1}"
+                                "mod", f"{b}|{slot_b.u}|{slot_b.slot}|{endpoint}|{a}|{i + 1}"
                             ),
                             "rack_id": b,
                             "panel_u": slot_b.u,
