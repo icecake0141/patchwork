@@ -1,29 +1,11 @@
-<<<<<<< HEAD
-# Copyright 2026 Patchwork Authors
-# SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-=======
 # Copyright 2026 OpenAI
 # SPDX-License-Identifier: Apache-2.0
 #
->>>>>>> origin/main
 # This file was created or modified with the assistance of an AI (Large Language Model).
 # Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
-<<<<<<< HEAD
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-=======
 import importlib
 from collections.abc import Callable
 from copy import deepcopy
@@ -95,4 +77,3 @@ def collect_values(obj: Any, target_key: str) -> list[Any]:
 
     _walk(obj)
     return values
->>>>>>> origin/main
