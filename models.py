@@ -1,110 +1,99 @@
-# Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 # This file was created or modified with the assistance of an AI (Large Language Model).
-# Review required for correctness, security, and licensing.
+"""Input models and validation for patchwork project.yaml."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from typing import Literal
 
-VALID_ENDPOINT_TYPES = {"mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"}
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
-@dataclass(frozen=True)
-class Rack:
-    id: str
-    name: str
+SUPPORTED_ENDPOINT_TYPES = {"mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"}
 
 
-@dataclass(frozen=True)
-class Demand:
-    id: str
-    src: str
-    dst: str
-    endpoint_type: str
-    count: int
+class ProjectMeta(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-
-@dataclass(frozen=True)
-class ProjectInfo:
     name: str
     note: str | None = None
 
 
-@dataclass(frozen=True)
-class ProjectYaml:
-    version: int
-    project: ProjectInfo
-    racks: list[Rack]
-    demands: list[Demand]
+class RackModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @classmethod
-    def model_validate(cls, data: dict[str, Any]) -> "ProjectYaml":
-        version_raw = data.get("version")
-        version = int(version_raw) if version_raw is not None else 0
-        if version != 1:
-            raise ValueError("version must be 1")
+    id: str
+    name: str
 
-        project_raw = data.get("project")
-        if not isinstance(project_raw, dict) or "name" not in project_raw:
-            raise ValueError("project.name is required")
-        project = ProjectInfo(name=str(project_raw["name"]), note=project_raw.get("note"))
 
-        racks_raw = data.get("racks")
-        if not isinstance(racks_raw, list) or len(racks_raw) == 0:
-            raise ValueError("racks must be a non-empty list")
+class DemandModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-        racks: list[Rack] = []
-        for raw in racks_raw:
-            if not isinstance(raw, dict):
-                raise ValueError("rack must be object")
-            if "id" not in raw or "name" not in raw:
-                raise ValueError("rack.id and rack.name are required")
-            racks.append(Rack(id=str(raw["id"]), name=str(raw["name"])))
+    id: str
+    src: str
+    dst: str
+    endpoint_type: Literal["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
+    count: int = Field(gt=0)
 
-        demands_raw = data.get("demands")
-        if not isinstance(demands_raw, list):
-            raise ValueError("demands must be list")
+    @model_validator(mode="after")
+    def validate_src_dst(self) -> "DemandModel":
+        if self.src == self.dst:
+            raise ValueError("src and dst must be different")
+        return self
 
-        demands: list[Demand] = []
-        for raw in demands_raw:
-            if not isinstance(raw, dict):
-                raise ValueError("demand must be object")
-            endpoint_type = str(raw.get("endpoint_type", ""))
-            count = int(raw.get("count", 0))
-            if endpoint_type not in VALID_ENDPOINT_TYPES:
-                raise ValueError(f"Unsupported endpoint_type: {endpoint_type}")
-            if count <= 0:
-                raise ValueError("count must be positive")
-            if "id" not in raw or "src" not in raw or "dst" not in raw:
-                raise ValueError("demand.id/src/dst are required")
-            demands.append(
-                Demand(
-                    id=str(raw["id"]),
-                    src=str(raw["src"]),
-                    dst=str(raw["dst"]),
-                    endpoint_type=endpoint_type,
-                    count=count,
-                )
-            )
 
-        rack_ids = [rack.id for rack in racks]
+class FixedProfiles(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lc_demands: dict[str, str] = Field(
+        default_factory=lambda: {"trunk_polarity": "A", "breakout_module_variant": "AF"}
+    )
+    mpo_e2e: dict[str, str] = Field(
+        default_factory=lambda: {"trunk_polarity": "B", "pass_through_variant": "A"}
+    )
+
+
+class Ordering(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slot_category_priority: list[str] = Field(
+        default_factory=lambda: ["mpo_e2e", "lc_mmf", "lc_smf", "utp"]
+    )
+    peer_sort: str = "natural_trailing_digits"
+
+
+class PanelSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slots_per_u: int = 4
+    allocation_direction: str = "top_down"
+
+
+class SettingsModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    fixed_profiles: FixedProfiles = Field(default_factory=FixedProfiles)
+    ordering: Ordering = Field(default_factory=Ordering)
+    panel: PanelSettings = Field(default_factory=PanelSettings)
+
+
+class ProjectInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: int = 1
+    project: ProjectMeta
+    racks: list[RackModel]
+    demands: list[DemandModel]
+    settings: SettingsModel = Field(default_factory=SettingsModel)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> "ProjectInput":
+        rack_ids = [rack.id for rack in self.racks]
         if len(set(rack_ids)) != len(rack_ids):
-            raise ValueError("Rack IDs must be unique")
-
-        known = set(rack_ids)
-        for demand in demands:
-            if demand.src == demand.dst:
-                raise ValueError(f"Demand {demand.id}: src and dst must differ")
-            if demand.src not in known or demand.dst not in known:
-                raise ValueError(f"Demand {demand.id}: src/dst must reference known racks")
-
-        return cls(version=version, project=project, racks=racks, demands=demands)
+            raise ValueError("rack ids must be unique")
+        rack_set = set(rack_ids)
+        for demand in self.demands:
+            if demand.src not in rack_set or demand.dst not in rack_set:
+                raise ValueError(f"demand {demand.id} references unknown rack")
+            if demand.endpoint_type not in SUPPORTED_ENDPOINT_TYPES:
+                raise ValueError(f"unsupported endpoint_type in demand {demand.id}")
+        return self

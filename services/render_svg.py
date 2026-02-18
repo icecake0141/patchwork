@@ -1,75 +1,58 @@
-# Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 # This file was created or modified with the assistance of an AI (Large Language Model).
-# Review required for correctness, security, and licensing.
+"""SVG rendering utilities for topology, rack occupancy, and pair detail."""
 
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, cast
+from typing import Any
 
 
 def render_topology_svg(result: dict[str, Any]) -> str:
-    counts: dict[tuple[str, str, str], int] = defaultdict(int)
-    sessions = cast(list[dict[str, Any]], result["sessions"])
-    for session in sessions:
-        pair = tuple(sorted((session["src_rack"], session["dst_rack"])))
-        key = (pair[0], pair[1], session["media"])
-        counts[key] += 1
-
-    lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600">']
-    lines.append('<text x="20" y="30" font-size="20">Rack Topology</text>')
-    y = 60
-    for (a, b, media), count in sorted(counts.items()):
-        lines.append(f'<text x="20" y="{y}" font-size="14">{a} ↔ {b}: {media} x {count}</text>')
-        y += 20
-    lines.append("</svg>")
-    return "\n".join(lines)
+    sessions = result["sessions"]
+    agg: dict[tuple[str, str, str], int] = defaultdict(int)
+    for s in sessions:
+        a, b = sorted((s["src_rack"], s["dst_rack"]))
+        agg[(a, b, s["media"])] += 1
+    rows = "".join(
+        f'<text x="10" y="{20 + i * 18}" font-size="12">{a} ↔ {b} [{m}] : {c}</text>'
+        for i, ((a, b, m), c) in enumerate(sorted(agg.items()))
+    )
+    height = 40 + len(agg) * 18
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}"><text x="10" y="15" font-size="14">Rack Topology</text>{rows}</svg>'
 
 
 def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
-    modules = [
-        m for m in cast(list[dict[str, Any]], result["modules"]) if str(m["rack_id"]) == rack_id
-    ]
-    lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="900" height="800">']
-    lines.append(f'<text x="20" y="30" font-size="20">Rack {rack_id} Panels</text>')
-    y = 60
-    for module in sorted(modules, key=lambda m: (m["panel_u"], m["slot"])):
-        lines.append(
-            f'<text x="20" y="{y}" font-size="14">'
-            f"U{module['panel_u']} S{module['slot']} {module['module_type']}"
-            "</text>"
-        )
-        y += 18
-    lines.append("</svg>")
-    return "\n".join(lines)
+    rack_panels = [p for p in result["panels"] if p["rack_id"] == rack_id]
+    modules = [m for m in result["modules"] if m["rack_id"] == rack_id]
+    by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
+    lines = [f'<text x="10" y="18" font-size="14">Rack {rack_id} Panel Occupancy</text>']
+    y = 40
+    for panel in sorted(rack_panels, key=lambda p: p["u"]):
+        lines.append(f'<text x="10" y="{y}" font-size="12">U{panel["u"]}</text>')
+        for slot in range(1, panel["slots_per_u"] + 1):
+            x = 80 + (slot - 1) * 190
+            mod = by_uslot.get((panel["u"], slot))
+            label = mod["module_type"] if mod else "empty"
+            lines.append(
+                f'<rect x="{x}" y="{y - 12}" width="180" height="18" fill="#eef" stroke="#225"/>'
+            )
+            lines.append(f'<text x="{x + 4}" y="{y}" font-size="10">S{slot}: {label}</text>')
+        y += 28
+    height = y + 20
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="880" height="{height}">{"".join(lines)}</svg>'
 
 
-def render_pair_detail_svg(result: dict[str, object], rack_a: str, rack_b: str) -> str:
-    sessions = [
-        s
-        for s in result["sessions"]
-        if set((s["src_rack"], s["dst_rack"])) == set((rack_a, rack_b))
-    ]
-    lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900">']
-    lines.append(f'<text x="20" y="30" font-size="20">Pair Detail {rack_a} ↔ {rack_b}</text>')
-    y = 60
-    for session in sorted(
-        sessions, key=lambda s: (s["media"], s["src_u"], s["src_slot"], s["src_port"])
-    ):
-        lines.append(
-            f'<text x="20" y="{y}" font-size="13">'
-            f"{session['media']} U{session['src_u']}S{session['src_slot']}P{session['src_port']}"
-            f" ↔ U{session['dst_u']}S{session['dst_slot']}P{session['dst_port']}"
-            "</text>"
+def render_pair_detail_svg(result: dict[str, Any], rack_a: str, rack_b: str) -> str:
+    key = f"{min(rack_a, rack_b)}__{max(rack_a, rack_b)}"
+    details = result.get("pair_details", {}).get(key, [])
+    rows = [f'<text x="10" y="18" font-size="14">Pair Detail {rack_a} ↔ {rack_b}</text>']
+    for i, d in enumerate(details):
+        y = 40 + i * 18
+        sa = d["slot_a"]
+        sb = d["slot_b"]
+        rows.append(
+            f'<text x="10" y="{y}" font-size="12">{d["type"]}: {sa.rack_id} U{sa.u}S{sa.slot} ↔ {sb.rack_id} U{sb.u}S{sb.slot} (ports used: {d["used"]})</text>'
         )
-        y += 16
-    lines.append("</svg>")
-    return "\n".join(lines)
+    h = 60 + len(details) * 18
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{h}">{"".join(rows)}</svg>'

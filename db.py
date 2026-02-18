@@ -1,31 +1,18 @@
-# Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 # This file was created or modified with the assistance of an AI (Large Language Model).
-# Review required for correctness, security, and licensing.
+"""SQLite persistence layer for project revisions and generated artifacts."""
 
 from __future__ import annotations
 
+import json
 import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
+from typing import Any, Iterator
 
-DB_PATH = Path("patchwork.db")
-
-
-def get_connection() -> sqlite3.Connection:
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
-    return connection
-
-
-def init_db() -> None:
-    ddl = """
+SCHEMA = """
 CREATE TABLE IF NOT EXISTS project (
   project_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -39,6 +26,7 @@ CREATE TABLE IF NOT EXISTS revision (
   note TEXT,
   input_yaml TEXT NOT NULL,
   input_hash TEXT NOT NULL,
+  result_json TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES project(project_id)
 );
 CREATE TABLE IF NOT EXISTS panel (
@@ -98,6 +86,131 @@ CREATE INDEX IF NOT EXISTS idx_session_revision ON session(revision_id);
 CREATE INDEX IF NOT EXISTS idx_module_revision_rack ON module(revision_id, rack_id);
 CREATE INDEX IF NOT EXISTS idx_panel_revision_rack ON panel(revision_id, rack_id);
 """
-    with get_connection() as connection:
-        connection.executescript(ddl)
-        connection.commit()
+
+
+class Database:
+    def __init__(self, path: str = "patchwork.db"):
+        self.path = path
+
+    @contextmanager
+    def connect(self) -> Iterator[sqlite3.Connection]:
+        conn = sqlite3.connect(self.path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    def init_db(self) -> None:
+        Path(self.path).parent.mkdir(parents=True, exist_ok=True)
+        with self.connect() as conn:
+            conn.executescript(SCHEMA)
+
+    def save_revision(
+        self, project_name: str, note: str | None, input_yaml: str, result: dict[str, Any]
+    ) -> tuple[str, str]:
+        now = datetime.now(timezone.utc).isoformat()
+        project_id = f"prj_{sha256(project_name.encode('utf-8')).hexdigest()[:16]}"
+        revision_id = (
+            f"rev_{sha256((project_name + now + input_yaml).encode('utf-8')).hexdigest()[:16]}"
+        )
+        input_hash = result["input_hash"]
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO project(project_id,name,created_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(project_id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name",
+                (project_id, project_name, now, now),
+            )
+            conn.execute(
+                "INSERT INTO revision(revision_id,project_id,created_at,note,input_yaml,input_hash,result_json) VALUES(?,?,?,?,?,?,?)",
+                (
+                    revision_id,
+                    project_id,
+                    now,
+                    note or "",
+                    input_yaml,
+                    input_hash,
+                    json.dumps(result, default=str),
+                ),
+            )
+            for panel in result["panels"]:
+                conn.execute(
+                    "INSERT INTO panel(panel_id,revision_id,rack_id,u,slots_per_u) VALUES(?,?,?,?,?)",
+                    (
+                        panel["panel_id"],
+                        revision_id,
+                        panel["rack_id"],
+                        panel["u"],
+                        panel["slots_per_u"],
+                    ),
+                )
+            for module in result["modules"]:
+                conn.execute(
+                    "INSERT INTO module(module_id,revision_id,rack_id,panel_u,slot,module_type,fiber_kind,polarity_variant,peer_rack_id,dedicated) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        module["module_id"],
+                        revision_id,
+                        module["rack_id"],
+                        module["panel_u"],
+                        module["slot"],
+                        module["module_type"],
+                        module["fiber_kind"],
+                        module["polarity_variant"],
+                        module["peer_rack_id"],
+                        module["dedicated"],
+                    ),
+                )
+            for cable in result["cables"]:
+                conn.execute(
+                    "INSERT INTO cable(cable_id,revision_id,cable_type,fiber_kind,polarity_type) VALUES(?,?,?,?,?)",
+                    (
+                        cable["cable_id"],
+                        revision_id,
+                        cable["cable_type"],
+                        cable["fiber_kind"],
+                        cable["polarity_type"],
+                    ),
+                )
+            for session in result["sessions"]:
+                conn.execute(
+                    "INSERT INTO session(session_id,revision_id,media,cable_id,adapter_type,label_a,label_b,src_rack,src_face,src_u,src_slot,src_port,dst_rack,dst_face,dst_u,dst_slot,dst_port,fiber_a,fiber_b,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        session["session_id"],
+                        revision_id,
+                        session["media"],
+                        session["cable_id"],
+                        session["adapter_type"],
+                        session["label_a"],
+                        session["label_b"],
+                        session["src_rack"],
+                        session["src_face"],
+                        session["src_u"],
+                        session["src_slot"],
+                        session["src_port"],
+                        session["dst_rack"],
+                        session["dst_face"],
+                        session["dst_u"],
+                        session["dst_slot"],
+                        session["dst_port"],
+                        session["fiber_a"],
+                        session["fiber_b"],
+                        session["notes"],
+                    ),
+                )
+        return project_id, revision_id
+
+    def list_projects(self) -> list[sqlite3.Row]:
+        with self.connect() as conn:
+            return conn.execute("SELECT * FROM project ORDER BY updated_at DESC").fetchall()
+
+    def list_revisions(self, project_id: str) -> list[sqlite3.Row]:
+        with self.connect() as conn:
+            return conn.execute(
+                "SELECT * FROM revision WHERE project_id=? ORDER BY created_at DESC", (project_id,)
+            ).fetchall()
+
+    def get_revision(self, revision_id: str) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute(
+                "SELECT * FROM revision WHERE revision_id=?", (revision_id,)
+            ).fetchone()

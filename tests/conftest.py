@@ -1,18 +1,24 @@
-# Copyright 2026 Patchwork Authors
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 # This file was created or modified with the assistance of an AI (Large Language Model).
-# Review required for correctness, security, and licensing.
-
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+
+def make_project(payload: dict):
+    from models import ProjectInput
+
+    return ProjectInput.model_validate(payload)
+
+
+def load_yaml(text: str):
+    from models import ProjectInput
+
+    return ProjectInput.model_validate(yaml.safe_load(text))
