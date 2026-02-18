@@ -1,4 +1,21 @@
+<!--
+Copyright 2026 Patchwork Authors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
+
 # Changelog
+
+## Unreleased
+- Added GitHub Actions CI workflow to run linting, formatting checks, type checks, tests, and pre-commit hooks.
 
 ## 0.1.0
 - Rebuilt the application from scratch based on the v0 design spec.
