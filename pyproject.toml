@@ -1,3 +1,9 @@
+# Copyright 2026 OpenAI
+# SPDX-License-Identifier: Apache-2.0
+#
+# This file was created or modified with the assistance of an AI (Large Language Model).
+# Review required for correctness, security, and licensing.
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -5,37 +11,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "patchwork"
 version = "0.1.0"
-description = "Data Center Rack-to-Rack Patch Cabling Design Assistant"
-requires-python = ">=3.11"
-dependencies = [
-  "flask>=3.0.0",
-  "pydantic>=2.6.0",
-  "pyyaml>=6.0.1",
-]
+description = "Allocator test suite"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = [
-  "pytest>=8.0.0",
-  "ruff>=0.6.0",
-  "mypy>=1.10.0",
-  "black>=24.0.0",
-  "pre-commit>=3.7.0",
+test = [
+  "pytest>=8.0",
 ]
 
-[tool.black]
-line-length = 100
-
-[tool.ruff]
-line-length = 100
-
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E501"]
-
-[tool.mypy]
-python_version = "3.10"
-exclude = ["tests/"]
-ignore_missing_imports = true
-disable_error_code = ["attr-defined", "import-untyped", "call-overload", "arg-type", "return-value", "index"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
