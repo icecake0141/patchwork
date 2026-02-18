@@ -8,4 +8,4 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic>=2.6.0, flask>=3.0.0, pyyaml>=6.0.1]
+        additional_dependencies: [pydantic>=2.6.0, flask>=3.0.0, pyyaml>=6.0.1, types-PyYAML>=6.0.0]
