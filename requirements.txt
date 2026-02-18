@@ -5,4 +5,4 @@ PyYAML==6.0.2
 pydantic==2.10.6
 pytest==8.3.4
 ruff==0.9.5
-mypy==1.15.0
+mypy==1.19.1
