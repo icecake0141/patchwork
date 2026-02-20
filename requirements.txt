@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # This file was created or modified with the assistance of an AI (Large Language Model).
 Flask==3.1.0
+pydantic==2.12.5
 PyYAML==6.0.3
-pydantic==2.10.6
 pytest==8.3.4
 ruff==0.9.5
 mypy==1.19.1
