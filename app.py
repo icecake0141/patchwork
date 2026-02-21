@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import yaml
 from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
+from pydantic import ValidationError
+from yaml import YAMLError
 
 from db import Database
 from models import ProjectInput
@@ -38,8 +40,16 @@ def create_app() -> Flask:
                 flash("Please select project.yaml")
                 return redirect(url_for("upload"))
             raw = file.read().decode("utf-8")
-            data = yaml.safe_load(raw)
-            project = ProjectInput.model_validate(data)
+            try:
+                data = yaml.safe_load(raw)
+            except YAMLError as exc:
+                flash(f"YAML parse error: {exc}")
+                return redirect(url_for("upload"))
+            try:
+                project = ProjectInput.model_validate(data)
+            except ValidationError as exc:
+                flash(f"Validation error: {exc.error_count()} error(s) — {exc.errors()[0]['msg']}")
+                return redirect(url_for("upload"))
             trial_id = str(uuid4())
             result = allocate(project)
             session["trial_id"] = trial_id
