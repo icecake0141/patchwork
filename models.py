@@ -90,6 +90,9 @@ class ProjectInput(BaseModel):
         rack_ids = [rack.id for rack in self.racks]
         if len(set(rack_ids)) != len(rack_ids):
             raise ValueError("rack ids must be unique")
+        demand_ids = [demand.id for demand in self.demands]
+        if len(set(demand_ids)) != len(demand_ids):
+            raise ValueError("demand ids must be unique")
         rack_set = set(rack_ids)
         for demand in self.demands:
             if demand.src not in rack_set or demand.dst not in rack_set:

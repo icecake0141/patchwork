@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -348,8 +349,6 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                     "slots_per_u": project.settings.panel.slots_per_u,
                 }
             )
-
-    import json
 
     input_hash = sha256(
         json.dumps(project.model_dump(), sort_keys=True).encode("utf-8")

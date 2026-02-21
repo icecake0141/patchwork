@@ -7,6 +7,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from services.allocator import pair_key
+
 
 def render_topology_svg(result: dict[str, Any]) -> str:
     sessions = result["sessions"]
@@ -44,7 +46,8 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
 
 
 def render_pair_detail_svg(result: dict[str, Any], rack_a: str, rack_b: str) -> str:
-    key = f"{min(rack_a, rack_b)}__{max(rack_a, rack_b)}"
+    a, b = pair_key(rack_a, rack_b)
+    key = f"{a}__{b}"
     details = result.get("pair_details", {}).get(key, [])
     rows = [f'<text x="10" y="18" font-size="14">Pair Detail {rack_a} ↔ {rack_b}</text>']
     for i, d in enumerate(details):
