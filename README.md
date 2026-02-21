@@ -64,7 +64,92 @@ pip install -e ".[dev]"
    ```
 2. Open http://localhost:5000/upload.
 3. Upload a `project.yaml` file (see `examples/quick-start/sample-project.yaml`).
-4. Download exported results (`result.json`, `sessions.csv`) from the UI.
+4. Download exported results (`result.json`, `sessions.csv`, `bom.csv`) from the UI.
+
+### Input format — `project.yaml`
+
+A `project.yaml` file has four sections: `project` (metadata), `racks`, `demands`, and
+optional `settings`.
+
+```yaml
+version: 1
+project:
+  name: example-dc-cabling   # project name (required)
+  note: optional note         # free-text note (optional)
+racks:
+  - id: R01          # unique rack ID
+    name: Rack-01    # display name
+    max_u: 42        # rack height in U (default 42)
+  - id: R02
+    name: Rack-02
+    max_u: 42
+demands:
+  - id: D001
+    src: R01                    # source rack ID
+    dst: R02                    # destination rack ID
+    endpoint_type: mmf_lc_duplex  # connection type (see below)
+    count: 13                   # number of connections required
+  - id: D002
+    src: R01
+    dst: R02
+    endpoint_type: mpo12
+    count: 14
+```
+
+Supported `endpoint_type` values:
+
+| Value           | Description                          |
+|-----------------|--------------------------------------|
+| `mmf_lc_duplex` | Multimode fiber, LC duplex connectors |
+| `smf_lc_duplex` | Singlemode fiber, LC duplex connectors |
+| `mpo12`         | MPO-12 fiber end-to-end              |
+| `utp_rj45`      | Copper UTP, RJ-45 connectors         |
+
+See `examples/quick-start/sample-project.yaml` for a full example including `settings`.
+
+### Output files
+
+After allocation Patchwork produces three downloadable files:
+
+| File           | Description |
+|----------------|-------------|
+| `sessions.csv` | Per-port patch wiring schedule, one row per connection. |
+| `bom.csv`      | Bill of Materials: panels, modules, and cables with quantities. |
+| `result.json`  | Full structured allocation result (panels, modules, cables, sessions, metrics). |
+
+**`sessions.csv` excerpt:**
+```
+project_id,revision_id,session_id,media,cable_id,cable_seq,adapter_type,label_a,label_b,...
+proj-001,rev-001,ses_068...,utp_rj45,cab_94e...,17,utp_6xrj45,R01U2S1P4,R03U1S1P4,...
+proj-001,rev-001,ses_198...,mpo12,cab_8c3...,16,mpo12_pass_through_12port,R01U1S1P10,R02U1S1P10,...
+```
+Port labels use the format `{rack}U{u}S{slot}P{port}` (e.g. `R01U1S2P3` = rack R01,
+panel at U1, slot 2, port 3).
+
+**`bom.csv` excerpt:**
+```
+item_type,description,quantity
+panel,1U patch panel (4 slots/U),4
+module,lc_breakout_2xmpo12_to_12xlcduplex,4
+module,mpo12_pass_through_12port,4
+module,utp_6xrj45,4
+cable,mpo12_trunk mmf polarity-A,4
+cable,mpo12_trunk polarity-B,14
+cable,utp_cable,8
+```
+
+**`result.json` metrics section:**
+```json
+{
+  "rack_count": 3,
+  "panel_count": 4,
+  "module_count": 12,
+  "cable_count": 26,
+  "session_count": 35
+}
+```
+
+See `examples/quick-start/README.md` for the complete field reference.
 
 ### HTML/UI notes
 The Web UI uses HTML templates under `templates/` and static assets under `static/`. You
@@ -140,7 +225,92 @@ pip install -e ".[dev]"
 2. http://localhost:5000/upload を開きます。
 3. `project.yaml` をアップロードします
    （`examples/quick-start/sample-project.yaml` を参照）。
-4. 結果（`result.json`, `sessions.csv`）を UI からダウンロードします。
+4. 結果（`result.json`, `sessions.csv`, `bom.csv`）を UI からダウンロードします。
+
+### 入力形式 — `project.yaml`
+
+`project.yaml` は `project`（メタ情報）、`racks`、`demands`、任意の `settings` の
+4つのセクションで構成されます。
+
+```yaml
+version: 1
+project:
+  name: example-dc-cabling   # プロジェクト名（必須）
+  note: 任意のメモ            # 自由記述（省略可）
+racks:
+  - id: R01          # ラック固有 ID
+    name: Rack-01    # 表示名
+    max_u: 42        # ラック高さ（U）。デフォルト 42
+  - id: R02
+    name: Rack-02
+    max_u: 42
+demands:
+  - id: D001
+    src: R01                    # 送信元ラック ID
+    dst: R02                    # 送信先ラック ID
+    endpoint_type: mmf_lc_duplex  # 接続種別（下表参照）
+    count: 13                   # 必要な接続本数
+  - id: D002
+    src: R01
+    dst: R02
+    endpoint_type: mpo12
+    count: 14
+```
+
+`endpoint_type` に指定できる値：
+
+| 値              | 説明                              |
+|-----------------|-----------------------------------|
+| `mmf_lc_duplex` | マルチモード光ファイバー、LC デュプレックス |
+| `smf_lc_duplex` | シングルモード光ファイバー、LC デュプレックス |
+| `mpo12`         | MPO-12 光ファイバー エンドツーエンド |
+| `utp_rj45`      | 銅線 UTP、RJ-45 コネクタ          |
+
+`settings` を含む完全なサンプルは `examples/quick-start/sample-project.yaml` を参照してください。
+
+### 出力ファイル
+
+割り当て完了後、3 つのファイルをダウンロードできます。
+
+| ファイル        | 説明 |
+|----------------|------|
+| `sessions.csv` | ポートごとのパッチ配線スケジュール（1 行 = 1 接続）。 |
+| `bom.csv`      | 部材表：パネル・モジュール・ケーブルの種別と数量。 |
+| `result.json`  | 全割り当て結果の構造化 JSON（パネル、モジュール、ケーブル、セッション、メトリクス）。 |
+
+**`sessions.csv` の例（抜粋）：**
+```
+project_id,revision_id,session_id,media,cable_id,cable_seq,adapter_type,label_a,label_b,...
+proj-001,rev-001,ses_068...,utp_rj45,cab_94e...,17,utp_6xrj45,R01U2S1P4,R03U1S1P4,...
+proj-001,rev-001,ses_198...,mpo12,cab_8c3...,16,mpo12_pass_through_12port,R01U1S1P10,R02U1S1P10,...
+```
+ポートラベルは `{ラック}U{U位置}S{スロット}P{ポート}` の形式です
+（例：`R01U1S2P3` = ラック R01 の U1 パネル、スロット 2、ポート 3）。
+
+**`bom.csv` の例：**
+```
+item_type,description,quantity
+panel,1U patch panel (4 slots/U),4
+module,lc_breakout_2xmpo12_to_12xlcduplex,4
+module,mpo12_pass_through_12port,4
+module,utp_6xrj45,4
+cable,mpo12_trunk mmf polarity-A,4
+cable,mpo12_trunk polarity-B,14
+cable,utp_cable,8
+```
+
+**`result.json` のメトリクスセクション例：**
+```json
+{
+  "rack_count": 3,
+  "panel_count": 4,
+  "module_count": 12,
+  "cable_count": 26,
+  "session_count": 35
+}
+```
+
+各フィールドの詳細は `examples/quick-start/README.md` を参照してください。
 
 ### HTML/UI について
 Web UI は `templates/` の HTML テンプレートと `static/` のアセットを利用します。
