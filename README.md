@@ -14,6 +14,9 @@ Review required for correctness, security, and licensing.
 
 # Patchwork (v0)
 
+[![CI](https://github.com/icecake0141/patchwork/actions/workflows/ci.yml/badge.svg)](https://github.com/icecake0141/patchwork/actions/workflows/ci.yml)
+[![Dependabot Updates](https://github.com/icecake0141/patchwork/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/icecake0141/patchwork/actions/workflows/dependabot/dependabot-updates)
+
 Patchwork is a Data Center Rack-to-Rack Patch Cabling Design Assistant. It provides a
 Flask-based web interface to upload cabling plans, run deterministic allocations, and
 export results.
