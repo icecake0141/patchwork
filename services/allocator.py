@@ -133,6 +133,12 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     warnings: list[str] = []
     pair_details: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
+    fp = project.settings.fixed_profiles
+    mpo_polarity = fp.mpo_e2e.get("trunk_polarity", "B")
+    mpo_variant = fp.mpo_e2e.get("pass_through_variant", "A")
+    lc_polarity = fp.lc_demands.get("trunk_polarity", "A")
+    lc_variant = fp.lc_demands.get("breakout_module_variant", "AF")
+
     normalized_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )
@@ -164,7 +170,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         "slot": slot_a.slot,
                         "module_type": "mpo12_pass_through_12port",
                         "fiber_kind": None,
-                        "polarity_variant": "A",
+                        "polarity_variant": mpo_variant,
                         "peer_rack_id": b,
                         "dedicated": 1,
                     },
@@ -177,7 +183,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         "slot": slot_b.slot,
                         "module_type": "mpo12_pass_through_12port",
                         "fiber_kind": None,
-                        "polarity_variant": "A",
+                        "polarity_variant": mpo_variant,
                         "peer_rack_id": a,
                         "dedicated": 1,
                     },
@@ -185,10 +191,15 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
             )
             used = min(12, count - i * 12)
             pair_details[f"{a}__{b}"].append(
-                {"type": "mpo12", "slot_a": slot_a, "slot_b": slot_b, "used": used}
+                {
+                    "type": "mpo12",
+                    "slot_a": {"rack_id": slot_a.rack_id, "u": slot_a.u, "slot": slot_a.slot},
+                    "slot_b": {"rack_id": slot_b.rack_id, "u": slot_b.u, "slot": slot_b.slot},
+                    "used": used,
+                }
             )
             for port in range(1, used + 1):
-                cable = _build_cable("mpo12", slot_a, port, slot_b, port, polarity="B")
+                cable = _build_cable("mpo12", slot_a, port, slot_b, port, polarity=mpo_polarity)
                 cables.setdefault(cable["cable_id"], cable)
                 sessions.append(
                     _session(
@@ -223,7 +234,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                             "slot": slot_a.slot,
                             "module_type": module_type,
                             "fiber_kind": fiber_kind,
-                            "polarity_variant": "AF",
+                            "polarity_variant": lc_variant,
                             "peer_rack_id": b,
                             "dedicated": 1,
                         },
@@ -236,7 +247,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                             "slot": slot_b.slot,
                             "module_type": module_type,
                             "fiber_kind": fiber_kind,
-                            "polarity_variant": "AF",
+                            "polarity_variant": lc_variant,
                             "peer_rack_id": a,
                             "dedicated": 1,
                         },
@@ -244,7 +255,12 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                 )
                 used = min(12, count - i * 12)
                 pair_details[f"{a}__{b}"].append(
-                    {"type": endpoint, "slot_a": slot_a, "slot_b": slot_b, "used": used}
+                    {
+                        "type": endpoint,
+                        "slot_a": {"rack_id": slot_a.rack_id, "u": slot_a.u, "slot": slot_a.slot},
+                        "slot_b": {"rack_id": slot_b.rack_id, "u": slot_b.u, "slot": slot_b.slot},
+                        "used": used,
+                    }
                 )
                 trunk_by_mpo: dict[int, str] = {}
                 for mpo_port in (1, 2):
@@ -254,7 +270,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         mpo_port,
                         slot_b,
                         mpo_port,
-                        polarity="A",
+                        polarity=lc_polarity,
                         fiber_kind=fiber_kind,
                     )
                     cables.setdefault(cable["cable_id"], cable)
