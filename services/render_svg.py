@@ -55,7 +55,7 @@ def render_pair_detail_svg(result: dict[str, Any], rack_a: str, rack_b: str) -> 
         sa = d["slot_a"]
         sb = d["slot_b"]
         rows.append(
-            f'<text x="10" y="{y}" font-size="12">{d["type"]}: {sa.rack_id} U{sa.u}S{sa.slot} ↔ {sb.rack_id} U{sb.u}S{sb.slot} (ports used: {d["used"]})</text>'
+            f'<text x="10" y="{y}" font-size="12">{d["type"]}: {sa["rack_id"]} U{sa["u"]}S{sa["slot"]} ↔ {sb["rack_id"]} U{sb["u"]}S{sb["slot"]} (ports used: {d["used"]})</text>'
         )
     h = 60 + len(details) * 18
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{h}">{"".join(rows)}</svg>'

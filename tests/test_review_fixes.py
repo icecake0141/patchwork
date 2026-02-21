@@ -1,9 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # This file was created or modified with the assistance of an AI (Large Language Model).
 """Tests covering code-review fixes: pair-key consistency, demand-id uniqueness,
-DB rollback on error, and upload error handling."""
+DB rollback on error, upload error handling, pair_details JSON serializability,
+and fixed_profiles settings propagation."""
 
 from __future__ import annotations
+
+import json
 
 import pytest
 
@@ -145,3 +148,82 @@ def test_upload_invalid_schema_shows_flash(tmp_path) -> None:
     )
     assert resp.status_code == 200
     assert b"Validation error" in resp.data
+
+
+# ---------------------------------------------------------------------------
+# pair_details JSON round-trip (Bug: SlotRef was not JSON-serialisable)
+# ---------------------------------------------------------------------------
+
+
+def _base_two_racks() -> dict:
+    return {
+        "version": 1,
+        "project": {"name": "rt"},
+        "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+        "demands": [],
+    }
+
+
+def test_pair_detail_survives_json_round_trip_mpo() -> None:
+    """pair_details must be JSON-serialisable so render_pair_detail_svg works
+    after loading a saved revision (json.dumps → json.loads round-trip)."""
+    payload = _base_two_racks()
+    payload["demands"] = [
+        {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 3}
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+    # Simulate the JSON round-trip that happens when reading a saved revision
+    deserialized = json.loads(json.dumps(result, default=str))
+    svg = render_pair_detail_svg(deserialized, "R1", "R2")
+    assert "ports used: 3" in svg
+
+
+def test_pair_detail_survives_json_round_trip_lc() -> None:
+    """Same round-trip check for LC breakout pair_details."""
+    payload = _base_two_racks()
+    payload["demands"] = [
+        {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mmf_lc_duplex", "count": 5}
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+    deserialized = json.loads(json.dumps(result, default=str))
+    svg = render_pair_detail_svg(deserialized, "R1", "R2")
+    assert "ports used: 5" in svg
+
+
+# ---------------------------------------------------------------------------
+# fixed_profiles settings propagation (Bug: values were hardcoded)
+# ---------------------------------------------------------------------------
+
+
+def test_fixed_profiles_mpo_polarity_applied() -> None:
+    """trunk_polarity from settings.fixed_profiles.mpo_e2e must be used for
+    MPO12 trunk cables instead of a hardcoded 'B'."""
+    payload = _base_two_racks()
+    payload["demands"] = [
+        {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+    ]
+    payload["settings"] = {
+        "fixed_profiles": {"mpo_e2e": {"trunk_polarity": "A", "pass_through_variant": "B"}}
+    }
+    result = allocate(ProjectInput.model_validate(payload))
+    cable = result["cables"][0]
+    assert cable["polarity_type"] == "A", "trunk_polarity from settings must be used"
+    r1_mod = next(m for m in result["modules"] if m["rack_id"] == "R1")
+    assert r1_mod["polarity_variant"] == "B", "pass_through_variant from settings must be used"
+
+
+def test_fixed_profiles_lc_polarity_applied() -> None:
+    """trunk_polarity and breakout_module_variant from settings.fixed_profiles.lc_demands
+    must be used for LC breakout cables and modules instead of hardcoded values."""
+    payload = _base_two_racks()
+    payload["demands"] = [
+        {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mmf_lc_duplex", "count": 1}
+    ]
+    payload["settings"] = {
+        "fixed_profiles": {"lc_demands": {"trunk_polarity": "B", "breakout_module_variant": "BF"}}
+    }
+    result = allocate(ProjectInput.model_validate(payload))
+    cable = result["cables"][0]
+    assert cable["polarity_type"] == "B", "trunk_polarity from settings must be used"
+    r1_mod = next(m for m in result["modules"] if m["rack_id"] == "R1")
+    assert r1_mod["polarity_variant"] == "BF", "breakout_module_variant from settings must be used"
