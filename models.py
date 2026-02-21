@@ -23,6 +23,7 @@ class RackModel(BaseModel):
 
     id: str
     name: str
+    max_u: int = Field(default=42, gt=0)
 
 
 class DemandModel(BaseModel):

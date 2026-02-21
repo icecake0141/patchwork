@@ -51,10 +51,15 @@ class SlotRef:
     slot: int
 
 
+class RackOverflowError(Exception):
+    """Raised when a rack's U capacity is exceeded."""
+
+
 class RackSlotAllocator:
-    def __init__(self, rack_id: str, slots_per_u: int = 4):
+    def __init__(self, rack_id: str, slots_per_u: int = 4, max_u: int = 42):
         self.rack_id = rack_id
         self.slots_per_u = slots_per_u
+        self.max_u = max_u
         self.next_index = 0
         self.panels: set[int] = set()
 
@@ -63,6 +68,10 @@ class RackSlotAllocator:
         idx = self.next_index
         u = (idx - 1) // self.slots_per_u + 1
         slot = (idx - 1) % self.slots_per_u + 1
+        if u > self.max_u:
+            raise RackOverflowError(
+                f"Rack {self.rack_id}: required U{u} exceeds max_u={self.max_u}"
+            )
         self.panels.add(u)
         return SlotRef(self.rack_id, u, slot)
 
@@ -124,7 +133,7 @@ def _session(
 
 def allocate(project: ProjectInput) -> dict[str, Any]:
     rack_allocators = {
-        rack.id: RackSlotAllocator(rack.id, project.settings.panel.slots_per_u)
+        rack.id: RackSlotAllocator(rack.id, project.settings.panel.slots_per_u, rack.max_u)
         for rack in project.racks
     }
     modules: list[dict[str, Any]] = []
@@ -151,14 +160,19 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     )
 
     # MPO end-to-end first
+    errors: list[str] = []
     for a, b in sorted_pairs:
         count = normalized_demands[(a, b)].get("mpo12", 0)
         if not count:
             continue
         slots_needed = ceil(count / 12)
         for i in range(slots_needed):
-            slot_a = rack_allocators[a].reserve_slot()
-            slot_b = rack_allocators[b].reserve_slot()
+            try:
+                slot_a = rack_allocators[a].reserve_slot()
+                slot_b = rack_allocators[b].reserve_slot()
+            except RackOverflowError as exc:
+                errors.append(str(exc))
+                break
             modules.extend(
                 [
                     {
@@ -220,8 +234,12 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                 continue
             modules_needed = ceil(count / 12)
             for i in range(modules_needed):
-                slot_a = rack_allocators[a].reserve_slot()
-                slot_b = rack_allocators[b].reserve_slot()
+                try:
+                    slot_a = rack_allocators[a].reserve_slot()
+                    slot_b = rack_allocators[b].reserve_slot()
+                except RackOverflowError as exc:
+                    errors.append(str(exc))
+                    break
                 module_type = "lc_breakout_2xmpo12_to_12xlcduplex"
                 modules.extend(
                     [
@@ -311,7 +329,12 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
             remaining = peer_counts[peer]
             while remaining > 0:
                 if current_slot is None or used_in_slot == 6:
-                    current_slot = rack_allocators[rack_id].reserve_slot()
+                    try:
+                        current_slot = rack_allocators[rack_id].reserve_slot()
+                    except RackOverflowError as exc:
+                        errors.append(str(exc))
+                        remaining = 0
+                        break
                     used_in_slot = 0
                     modules.append(
                         {
@@ -366,6 +389,10 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                 }
             )
 
+    sorted_cables = sorted(cables.values(), key=lambda c: c["cable_id"])
+    for seq, cable in enumerate(sorted_cables, start=1):
+        cable["cable_seq"] = seq
+
     input_hash = sha256(
         json.dumps(project.model_dump(), sort_keys=True).encode("utf-8")
     ).hexdigest()
@@ -376,10 +403,10 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
         "modules": sorted(
             modules, key=lambda m: (natural_sort_key(m["rack_id"]), m["panel_u"], m["slot"])
         ),
-        "cables": sorted(cables.values(), key=lambda c: c["cable_id"]),
+        "cables": sorted_cables,
         "sessions": sorted(sessions, key=lambda s: s["session_id"]),
         "warnings": warnings,
-        "errors": [],
+        "errors": errors,
         "metrics": {
             "rack_count": len(project.racks),
             "panel_count": len(panels),

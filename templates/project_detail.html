@@ -10,6 +10,7 @@
 {% if chosen %}
 <h2>Revision {{ chosen.revision_id }}</h2>
 <a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">Export sessions.csv</a>
+<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
 <a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
 <p>Sessions: {{ result.metrics.session_count }}</p>
 {% endif %}
