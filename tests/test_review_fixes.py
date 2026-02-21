@@ -15,6 +15,7 @@ from services.render_svg import render_pair_detail_svg
 # pair_key / render_pair_detail_svg consistency
 # ---------------------------------------------------------------------------
 
+
 def test_pair_key_natural_sort_order() -> None:
     """pair_key must use natural sort so R2 < R10 (not lexicographic R10 < R2)."""
     assert pair_key("R10", "R2") == ("R2", "R10")
@@ -49,6 +50,7 @@ def test_render_pair_detail_svg_uses_natural_sort_key() -> None:
 # models.py – demand ID uniqueness
 # ---------------------------------------------------------------------------
 
+
 def test_model_validation_rejects_duplicate_demand_ids() -> None:
     payload = {
         "version": 1,
@@ -67,6 +69,7 @@ def test_model_validation_rejects_duplicate_demand_ids() -> None:
 # db.py – rollback on error
 # ---------------------------------------------------------------------------
 
+
 def test_db_connect_rolls_back_on_exception(tmp_path) -> None:
     from db import Database
 
@@ -84,15 +87,14 @@ def test_db_connect_rolls_back_on_exception(tmp_path) -> None:
 
     # The insert must NOT have been committed
     with db.connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM project WHERE project_id=?", ("prj_test",)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM project WHERE project_id=?", ("prj_test",)).fetchone()
     assert row is None
 
 
 # ---------------------------------------------------------------------------
 # app.py – upload error handling
 # ---------------------------------------------------------------------------
+
 
 def _make_client(tmp_db_path: str | None = None):
     import os
