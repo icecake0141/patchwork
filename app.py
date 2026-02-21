@@ -16,7 +16,7 @@ from yaml import YAMLError
 from db import Database
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import result_json, sessions_csv
+from services.export import bom_csv, result_json, sessions_csv
 from services.render_svg import render_pair_detail_svg, render_rack_panels_svg, render_topology_svg
 
 
@@ -116,6 +116,19 @@ def create_app() -> Flask:
             csv_text,
             mimetype="text/csv",
             headers={"Content-Disposition": f"attachment; filename={revision_id}_sessions.csv"},
+        )
+
+    @app.get("/revisions/<revision_id>/export/bom.csv")
+    def export_bom(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        csv_text = bom_csv(result)
+        return Response(
+            csv_text,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={revision_id}_bom.csv"},
         )
 
     @app.get("/revisions/<revision_id>/export/result.json")

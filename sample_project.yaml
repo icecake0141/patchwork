@@ -5,10 +5,13 @@ project:
 racks:
   - id: R01
     name: Rack-01
+    max_u: 42
   - id: R02
     name: Rack-02
+    max_u: 42
   - id: R03
     name: Rack-03
+    max_u: 42
 demands:
   - id: D001
     src: R01
