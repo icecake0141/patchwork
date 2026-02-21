@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+# This file was created or modified with the assistance of an AI (Large Language Model).
+# Sample project.yaml for Patchwork quick-start demo
+version: 1
+project:
+  name: example-dc-cabling
+  note: optional free-text note for this project
+racks:
+  - id: R01
+    name: Rack-01
+    max_u: 42
+  - id: R02
+    name: Rack-02
+    max_u: 42
+  - id: R03
+    name: Rack-03
+    max_u: 42
+demands:
+  - id: D001
+    src: R01
+    dst: R02
+    endpoint_type: mmf_lc_duplex
+    count: 13
+  - id: D002
+    src: R01
+    dst: R02
+    endpoint_type: mpo12
+    count: 14
+  - id: D003
+    src: R01
+    dst: R03
+    endpoint_type: utp_rj45
+    count: 8
+settings:
+  fixed_profiles:
+    lc_demands:
+      trunk_polarity: A
+      breakout_module_variant: AF
+    mpo_e2e:
+      trunk_polarity: B
+      pass_through_variant: A
+  ordering:
+    slot_category_priority: [mpo_e2e, lc_mmf, lc_smf, utp]
+    peer_sort: natural_trailing_digits
+  panel:
+    slots_per_u: 4
+    allocation_direction: top_down
