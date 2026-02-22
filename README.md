@@ -110,6 +110,12 @@ Supported `endpoint_type` values:
 
 See `examples/quick-start/sample-project.yaml` for a full example including `settings`.
 
+The optional `settings.ordering.slot_category_priority` list controls the order in which
+demand categories are allocated to rack slots. The default order is
+`[mpo_e2e, lc_mmf, lc_smf, utp]`. Change it to allocate categories in a different order,
+or omit categories entirely to skip them. Unknown categories are rejected at load time.
+See `examples/quick-start/README.md` for the full field reference.
+
 ### Output files
 
 After allocation Patchwork produces three downloadable files:
@@ -270,6 +276,10 @@ demands:
 | `utp_rj45`      | 銅線 UTP、RJ-45 コネクタ          |
 
 `settings` を含む完全なサンプルは `examples/quick-start/sample-project.yaml` を参照してください。
+
+任意の `settings.ordering.slot_category_priority` リストで、カテゴリのスロット割り当て順を制御できます。
+デフォルトは `[mpo_e2e, lc_mmf, lc_smf, utp]` です。順序の変更やカテゴリの省略が可能で、
+不明なカテゴリは読み込み時にエラーになります。詳細は `examples/quick-start/README.md` を参照してください。
 
 ### 出力ファイル
 

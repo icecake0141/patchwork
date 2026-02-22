@@ -102,7 +102,7 @@ settings:
 | `fixed_profiles.lc_demands.breakout_module_variant` | Variant label recorded on LC breakout modules (`polarity_variant`). | String (example: `AF`, `BF`) | **Active** |
 | `fixed_profiles.mpo_e2e.trunk_polarity` | Trunk polarity used for `mpo12` end-to-end trunks. Reflected in cable `polarity_type`. | Common values: `A` / `B` (string) | **Active** |
 | `fixed_profiles.mpo_e2e.pass_through_variant` | Variant label recorded on MPO pass-through modules (`polarity_variant`). | String (example: `A`, `B`) | **Active** |
-| `ordering.slot_category_priority` | Intended priority for slot allocation by category (`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`). | List of strings | **Reserved (currently not used by allocator logic)** |
+| `ordering.slot_category_priority` | Priority order for slot allocation by category (`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`). Categories are allocated in the listed order; categories absent from the list are silently skipped; unknown categories are rejected by validation. | List of strings (subset of `mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`) | **Active** |
 | `ordering.peer_sort` | Intended peer rack sorting strategy. | Current default: `natural_trailing_digits` | **Reserved (currently not used by allocator logic)** |
 | `panel.slots_per_u` | Number of module slots in each 1U panel; affects panel/slot progression and panel count. | Positive integer (default `4`) | **Active** |
 | `panel.allocation_direction` | Intended panel fill direction. | Current default: `top_down` | **Reserved (currently not used by allocator logic)** |
@@ -305,7 +305,7 @@ settings:
 | `fixed_profiles.lc_demands.breakout_module_variant` | LCブレイクアウトモジュールに記録するバリアント名（`polarity_variant`）。 | 文字列（例: `AF`, `BF`） | **有効** |
 | `fixed_profiles.mpo_e2e.trunk_polarity` | `mpo12` エンドツーエンド需要で使うトランク極性。ケーブルの `polarity_type` に反映。 | 一般的には `A` / `B`（文字列） | **有効** |
 | `fixed_profiles.mpo_e2e.pass_through_variant` | MPOパススルーモジュールに記録するバリアント名（`polarity_variant`）。 | 文字列（例: `A`, `B`） | **有効** |
-| `ordering.slot_category_priority` | カテゴリ別（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`）のスロット割り当て優先順を指定する想定項目。 | 文字列リスト | **予約（現行アロケータでは未使用）** |
+| `ordering.slot_category_priority` | カテゴリ別（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`）のスロット割り当て優先順。リストの順に割り当てる。リストに含まれないカテゴリはスキップ。不明なカテゴリはバリデーションエラー。 | 文字列リスト（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp` の部分集合） | **有効** |
 | `ordering.peer_sort` | ピアラックの並び順戦略を指定する想定項目。 | 既定値 `natural_trailing_digits` | **予約（現行アロケータでは未使用）** |
 | `panel.slots_per_u` | 1Uパネル内のスロット数。スロット進行・必要パネル数に影響。 | 正の整数（既定 `4`） | **有効** |
 | `panel.allocation_direction` | パネルを埋める方向を指定する想定項目。 | 既定値 `top_down` | **予約（現行アロケータでは未使用）** |

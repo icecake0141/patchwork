@@ -14,6 +14,15 @@ from typing import Any
 
 from models import ProjectInput
 
+# Maps each slot category to the (endpoint_type, fiber_kind) pairs it covers.
+# "utp" is handled inline in the priority loop and has no entries here.
+_CATEGORY_ENDPOINTS: dict[str, list[tuple[str, str | None]]] = {
+    "mpo_e2e": [("mpo12", None)],
+    "lc_mmf": [("mmf_lc_duplex", "mmf")],
+    "lc_smf": [("smf_lc_duplex", "smf")],
+    "utp": [],
+}
+
 
 def natural_sort_key(value: str) -> tuple[int, Any, str]:
     match = re.search(r"(\d+)$", value)
@@ -159,158 +168,10 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
         normalized_demands.keys(), key=lambda p: (natural_sort_key(p[0]), natural_sort_key(p[1]))
     )
 
-    # MPO end-to-end first
     errors: list[str] = []
-    for a, b in sorted_pairs:
-        count = normalized_demands[(a, b)].get("mpo12", 0)
-        if not count:
-            continue
-        slots_needed = ceil(count / 12)
-        for i in range(slots_needed):
-            try:
-                slot_a = rack_allocators[a].reserve_slot()
-                slot_b = rack_allocators[b].reserve_slot()
-            except RackOverflowError as exc:
-                errors.append(str(exc))
-                break
-            modules.extend(
-                [
-                    {
-                        "module_id": deterministic_id(
-                            "mod", f"{a}|{slot_a.u}|{slot_a.slot}|mpo|{b}|{i + 1}"
-                        ),
-                        "rack_id": a,
-                        "panel_u": slot_a.u,
-                        "slot": slot_a.slot,
-                        "module_type": "mpo12_pass_through_12port",
-                        "fiber_kind": None,
-                        "polarity_variant": mpo_variant,
-                        "peer_rack_id": b,
-                        "dedicated": 1,
-                    },
-                    {
-                        "module_id": deterministic_id(
-                            "mod", f"{b}|{slot_b.u}|{slot_b.slot}|mpo|{a}|{i + 1}"
-                        ),
-                        "rack_id": b,
-                        "panel_u": slot_b.u,
-                        "slot": slot_b.slot,
-                        "module_type": "mpo12_pass_through_12port",
-                        "fiber_kind": None,
-                        "polarity_variant": mpo_variant,
-                        "peer_rack_id": a,
-                        "dedicated": 1,
-                    },
-                ]
-            )
-            used = min(12, count - i * 12)
-            pair_details[f"{a}__{b}"].append(
-                {
-                    "type": "mpo12",
-                    "slot_a": {"rack_id": slot_a.rack_id, "u": slot_a.u, "slot": slot_a.slot},
-                    "slot_b": {"rack_id": slot_b.rack_id, "u": slot_b.u, "slot": slot_b.slot},
-                    "used": used,
-                }
-            )
-            for port in range(1, used + 1):
-                cable = _build_cable("mpo12", slot_a, port, slot_b, port, polarity=mpo_polarity)
-                cables.setdefault(cable["cable_id"], cable)
-                sessions.append(
-                    _session(
-                        "mpo12",
-                        cable["cable_id"],
-                        "mpo12_pass_through_12port",
-                        slot_a,
-                        port,
-                        slot_b,
-                        port,
-                    )
-                )
+    priority = project.settings.ordering.slot_category_priority
 
-    for endpoint, fiber_kind in (("mmf_lc_duplex", "mmf"), ("smf_lc_duplex", "smf")):
-        for a, b in sorted_pairs:
-            count = normalized_demands[(a, b)].get(endpoint, 0)
-            if not count:
-                continue
-            modules_needed = ceil(count / 12)
-            for i in range(modules_needed):
-                try:
-                    slot_a = rack_allocators[a].reserve_slot()
-                    slot_b = rack_allocators[b].reserve_slot()
-                except RackOverflowError as exc:
-                    errors.append(str(exc))
-                    break
-                module_type = "lc_breakout_2xmpo12_to_12xlcduplex"
-                modules.extend(
-                    [
-                        {
-                            "module_id": deterministic_id(
-                                "mod", f"{a}|{slot_a.u}|{slot_a.slot}|{endpoint}|{b}|{i + 1}"
-                            ),
-                            "rack_id": a,
-                            "panel_u": slot_a.u,
-                            "slot": slot_a.slot,
-                            "module_type": module_type,
-                            "fiber_kind": fiber_kind,
-                            "polarity_variant": lc_variant,
-                            "peer_rack_id": b,
-                            "dedicated": 1,
-                        },
-                        {
-                            "module_id": deterministic_id(
-                                "mod", f"{b}|{slot_b.u}|{slot_b.slot}|{endpoint}|{a}|{i + 1}"
-                            ),
-                            "rack_id": b,
-                            "panel_u": slot_b.u,
-                            "slot": slot_b.slot,
-                            "module_type": module_type,
-                            "fiber_kind": fiber_kind,
-                            "polarity_variant": lc_variant,
-                            "peer_rack_id": a,
-                            "dedicated": 1,
-                        },
-                    ]
-                )
-                used = min(12, count - i * 12)
-                pair_details[f"{a}__{b}"].append(
-                    {
-                        "type": endpoint,
-                        "slot_a": {"rack_id": slot_a.rack_id, "u": slot_a.u, "slot": slot_a.slot},
-                        "slot_b": {"rack_id": slot_b.rack_id, "u": slot_b.u, "slot": slot_b.slot},
-                        "used": used,
-                    }
-                )
-                trunk_by_mpo: dict[int, str] = {}
-                for mpo_port in (1, 2):
-                    cable = _build_cable(
-                        endpoint,
-                        slot_a,
-                        mpo_port,
-                        slot_b,
-                        mpo_port,
-                        polarity=lc_polarity,
-                        fiber_kind=fiber_kind,
-                    )
-                    cables.setdefault(cable["cable_id"], cable)
-                    trunk_by_mpo[mpo_port] = cable["cable_id"]
-                for lc_port in range(1, used + 1):
-                    mpo_port = 1 if lc_port <= 6 else 2
-                    mpo_local = lc_port if lc_port <= 6 else lc_port - 6
-                    fibers = LC_FIBER_MAP[mpo_local]
-                    sessions.append(
-                        _session(
-                            endpoint,
-                            trunk_by_mpo[mpo_port],
-                            module_type,
-                            slot_a,
-                            lc_port,
-                            slot_b,
-                            lc_port,
-                            fiber_pair=fibers,
-                        )
-                    )
-
-    # UTP: aggregate by rack and peer
+    # UTP: aggregate counts by rack-peer pair (used when "utp" appears in priority)
     rack_peer_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for (a, b), payload in normalized_demands.items():
         utp = payload.get("utp_rj45", 0)
@@ -321,40 +182,206 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     utp_ports: dict[str, dict[str, list[tuple[SlotRef, int]]]] = defaultdict(
         lambda: defaultdict(list)
     )
-    for rack_id, peer_counts in rack_peer_counts.items():
-        peers = sorted(peer_counts.keys(), key=natural_sort_key)
-        current_slot: SlotRef | None = None
-        used_in_slot = 0
-        for peer in peers:
-            remaining = peer_counts[peer]
-            while remaining > 0:
-                if current_slot is None or used_in_slot == 6:
+
+    for category in priority:
+        if category == "utp":
+            # Allocate UTP slots at this priority position
+            for rack_id, peer_counts in rack_peer_counts.items():
+                peers = sorted(peer_counts.keys(), key=natural_sort_key)
+                current_slot: SlotRef | None = None
+                used_in_slot = 0
+                for peer in peers:
+                    remaining = peer_counts[peer]
+                    while remaining > 0:
+                        if current_slot is None or used_in_slot == 6:
+                            try:
+                                current_slot = rack_allocators[rack_id].reserve_slot()
+                            except RackOverflowError as exc:
+                                errors.append(str(exc))
+                                remaining = 0
+                                break
+                            used_in_slot = 0
+                            modules.append(
+                                {
+                                    "module_id": deterministic_id(
+                                        "mod",
+                                        f"{rack_id}|{current_slot.u}|{current_slot.slot}|utp",
+                                    ),
+                                    "rack_id": rack_id,
+                                    "panel_u": current_slot.u,
+                                    "slot": current_slot.slot,
+                                    "module_type": "utp_6xrj45",
+                                    "fiber_kind": None,
+                                    "polarity_variant": None,
+                                    "peer_rack_id": None,
+                                    "dedicated": 0,
+                                }
+                            )
+                        port = used_in_slot + 1
+                        utp_ports[rack_id][peer].append((current_slot, port))
+                        used_in_slot += 1
+                        remaining -= 1
+            continue
+
+        for endpoint, fiber_kind in _CATEGORY_ENDPOINTS[category]:
+            for a, b in sorted_pairs:
+                count = normalized_demands[(a, b)].get(endpoint, 0)
+                if not count:
+                    continue
+                slots_needed = ceil(count / 12)
+                for i in range(slots_needed):
                     try:
-                        current_slot = rack_allocators[rack_id].reserve_slot()
+                        slot_a = rack_allocators[a].reserve_slot()
+                        slot_b = rack_allocators[b].reserve_slot()
                     except RackOverflowError as exc:
                         errors.append(str(exc))
-                        remaining = 0
                         break
-                    used_in_slot = 0
-                    modules.append(
-                        {
-                            "module_id": deterministic_id(
-                                "mod", f"{rack_id}|{current_slot.u}|{current_slot.slot}|utp"
-                            ),
-                            "rack_id": rack_id,
-                            "panel_u": current_slot.u,
-                            "slot": current_slot.slot,
-                            "module_type": "utp_6xrj45",
-                            "fiber_kind": None,
-                            "polarity_variant": None,
-                            "peer_rack_id": None,
-                            "dedicated": 0,
-                        }
-                    )
-                port = used_in_slot + 1
-                utp_ports[rack_id][peer].append((current_slot, port))
-                used_in_slot += 1
-                remaining -= 1
+                    if endpoint == "mpo12":
+                        module_type = "mpo12_pass_through_12port"
+                        modules.extend(
+                            [
+                                {
+                                    "module_id": deterministic_id(
+                                        "mod", f"{a}|{slot_a.u}|{slot_a.slot}|mpo|{b}|{i + 1}"
+                                    ),
+                                    "rack_id": a,
+                                    "panel_u": slot_a.u,
+                                    "slot": slot_a.slot,
+                                    "module_type": module_type,
+                                    "fiber_kind": None,
+                                    "polarity_variant": mpo_variant,
+                                    "peer_rack_id": b,
+                                    "dedicated": 1,
+                                },
+                                {
+                                    "module_id": deterministic_id(
+                                        "mod", f"{b}|{slot_b.u}|{slot_b.slot}|mpo|{a}|{i + 1}"
+                                    ),
+                                    "rack_id": b,
+                                    "panel_u": slot_b.u,
+                                    "slot": slot_b.slot,
+                                    "module_type": module_type,
+                                    "fiber_kind": None,
+                                    "polarity_variant": mpo_variant,
+                                    "peer_rack_id": a,
+                                    "dedicated": 1,
+                                },
+                            ]
+                        )
+                        used = min(12, count - i * 12)
+                        pair_details[f"{a}__{b}"].append(
+                            {
+                                "type": "mpo12",
+                                "slot_a": {
+                                    "rack_id": slot_a.rack_id,
+                                    "u": slot_a.u,
+                                    "slot": slot_a.slot,
+                                },
+                                "slot_b": {
+                                    "rack_id": slot_b.rack_id,
+                                    "u": slot_b.u,
+                                    "slot": slot_b.slot,
+                                },
+                                "used": used,
+                            }
+                        )
+                        for port in range(1, used + 1):
+                            cable = _build_cable(
+                                "mpo12", slot_a, port, slot_b, port, polarity=mpo_polarity
+                            )
+                            cables.setdefault(cable["cable_id"], cable)
+                            sessions.append(
+                                _session(
+                                    "mpo12",
+                                    cable["cable_id"],
+                                    module_type,
+                                    slot_a,
+                                    port,
+                                    slot_b,
+                                    port,
+                                )
+                            )
+                    else:
+                        # LC breakout (mmf or smf)
+                        module_type = "lc_breakout_2xmpo12_to_12xlcduplex"
+                        modules.extend(
+                            [
+                                {
+                                    "module_id": deterministic_id(
+                                        "mod",
+                                        f"{a}|{slot_a.u}|{slot_a.slot}|{endpoint}|{b}|{i + 1}",
+                                    ),
+                                    "rack_id": a,
+                                    "panel_u": slot_a.u,
+                                    "slot": slot_a.slot,
+                                    "module_type": module_type,
+                                    "fiber_kind": fiber_kind,
+                                    "polarity_variant": lc_variant,
+                                    "peer_rack_id": b,
+                                    "dedicated": 1,
+                                },
+                                {
+                                    "module_id": deterministic_id(
+                                        "mod",
+                                        f"{b}|{slot_b.u}|{slot_b.slot}|{endpoint}|{a}|{i + 1}",
+                                    ),
+                                    "rack_id": b,
+                                    "panel_u": slot_b.u,
+                                    "slot": slot_b.slot,
+                                    "module_type": module_type,
+                                    "fiber_kind": fiber_kind,
+                                    "polarity_variant": lc_variant,
+                                    "peer_rack_id": a,
+                                    "dedicated": 1,
+                                },
+                            ]
+                        )
+                        used = min(12, count - i * 12)
+                        pair_details[f"{a}__{b}"].append(
+                            {
+                                "type": endpoint,
+                                "slot_a": {
+                                    "rack_id": slot_a.rack_id,
+                                    "u": slot_a.u,
+                                    "slot": slot_a.slot,
+                                },
+                                "slot_b": {
+                                    "rack_id": slot_b.rack_id,
+                                    "u": slot_b.u,
+                                    "slot": slot_b.slot,
+                                },
+                                "used": used,
+                            }
+                        )
+                        trunk_by_mpo: dict[int, str] = {}
+                        for mpo_port in (1, 2):
+                            cable = _build_cable(
+                                endpoint,
+                                slot_a,
+                                mpo_port,
+                                slot_b,
+                                mpo_port,
+                                polarity=lc_polarity,
+                                fiber_kind=fiber_kind,
+                            )
+                            cables.setdefault(cable["cable_id"], cable)
+                            trunk_by_mpo[mpo_port] = cable["cable_id"]
+                        for lc_port in range(1, used + 1):
+                            mpo_port = 1 if lc_port <= 6 else 2
+                            mpo_local = lc_port if lc_port <= 6 else lc_port - 6
+                            fibers = LC_FIBER_MAP[mpo_local]
+                            sessions.append(
+                                _session(
+                                    endpoint,
+                                    trunk_by_mpo[mpo_port],
+                                    module_type,
+                                    slot_a,
+                                    lc_port,
+                                    slot_b,
+                                    lc_port,
+                                    fiber_pair=fibers,
+                                )
+                            )
 
     for a, b in sorted_pairs:
         count = normalized_demands[(a, b)].get("utp_rj45", 0)
