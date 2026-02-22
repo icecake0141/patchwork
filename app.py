@@ -17,7 +17,7 @@ from db import Database
 from models import ProjectInput
 from services.allocator import allocate
 from services.export import bom_csv, result_json, sessions_csv
-from services.render_svg import render_pair_detail_svg, render_rack_panels_svg, render_topology_svg
+from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
 
 
 def create_app() -> Flask:
@@ -69,11 +69,19 @@ def create_app() -> Flask:
             flash("No active trial")
             return redirect(url_for("upload"))
         result = json.loads(trial["result_json"])
-        topology_svg = render_topology_svg(result)
+        topology_counts: dict[tuple[str, str, str], int] = {}
+        for session_row in result["sessions"]:
+            rack_a, rack_b = sorted((session_row["src_rack"], session_row["dst_rack"]))
+            key = (rack_a, rack_b, session_row["media"])
+            topology_counts[key] = topology_counts.get(key, 0) + 1
+        topology_rows = [
+            {"rack_a": rack_a, "rack_b": rack_b, "media": media, "count": count}
+            for (rack_a, rack_b, media), count in sorted(topology_counts.items())
+        ]
         racks = sorted({p["rack_id"] for p in result["panels"]})
         rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
         return render_template(
-            "trial.html", result=result, topology_svg=topology_svg, rack_svgs=rack_svgs
+            "trial.html", result=result, topology_rows=topology_rows, rack_svgs=rack_svgs
         )
 
     @app.post("/save")
