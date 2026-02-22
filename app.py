@@ -112,12 +112,28 @@ def create_app() -> Flask:
             db.get_revision(revision_id) if revision_id else (revisions[0] if revisions else None)
         )
         result = json.loads(chosen["result_json"]) if chosen else None
+        topology_rows: list[dict[str, str | int]] = []
+        rack_svgs: dict[str, str] = {}
+        if result:
+            topology_counts: dict[tuple[str, str, str], int] = {}
+            for session_row in result["sessions"]:
+                rack_a, rack_b = sorted((session_row["src_rack"], session_row["dst_rack"]))
+                key = (rack_a, rack_b, session_row["media"])
+                topology_counts[key] = topology_counts.get(key, 0) + 1
+            topology_rows = [
+                {"rack_a": rack_a, "rack_b": rack_b, "media": media, "count": count}
+                for (rack_a, rack_b, media), count in sorted(topology_counts.items())
+            ]
+            racks = sorted({panel["rack_id"] for panel in result["panels"]})
+            rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
         return render_template(
             "project_detail.html",
             project_id=project_id,
             revisions=revisions,
             chosen=chosen,
             result=result,
+            topology_rows=topology_rows,
+            rack_svgs=rack_svgs,
         )
 
     @app.get("/revisions/<revision_id>/export/sessions.csv")

@@ -22,7 +22,30 @@
 		<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
 		<a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
 	</div>
-	<p>Sessions: {{ result.metrics.session_count }}</p>
+	<p>Sessions: {{ result.metrics.session_count }} / Modules: {{ result.metrics.module_count }}</p>
+</div>
+
+<div class="card">
+	<h2>Rack Topology</h2>
+	<table>
+	<tr><th>rack_a</th><th>rack_b</th><th>media</th><th>count</th></tr>
+	{% for row in topology_rows %}
+	<tr>
+		<td>{{ row.rack_a }}</td>
+		<td>{{ row.rack_b }}</td>
+		<td>{{ row.media }}</td>
+		<td>{{ row.count }}</td>
+	</tr>
+	{% endfor %}
+	</table>
+</div>
+
+<div class="card">
+	<h2>Rack Occupancy</h2>
+	{% for rack,svg in rack_svgs.items() %}
+	<h3>{{ rack }}</h3>
+	<div>{{ svg|safe }}</div>
+	{% endfor %}
 </div>
 {% endif %}
 {% endblock %}
