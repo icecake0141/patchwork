@@ -65,22 +65,37 @@ class RackOverflowError(Exception):
 
 
 class RackSlotAllocator:
-    def __init__(self, rack_id: str, slots_per_u: int = 4, max_u: int = 42):
+    def __init__(
+        self,
+        rack_id: str,
+        slots_per_u: int = 4,
+        max_u: int = 42,
+        allocation_direction: str = "top_down",
+    ):
         self.rack_id = rack_id
         self.slots_per_u = slots_per_u
         self.max_u = max_u
+        self.allocation_direction = allocation_direction
         self.next_index = 0
         self.panels: set[int] = set()
 
     def reserve_slot(self) -> SlotRef:
         self.next_index += 1
         idx = self.next_index
-        u = (idx - 1) // self.slots_per_u + 1
+        panel_index = (idx - 1) // self.slots_per_u  # 0-based panel number
         slot = (idx - 1) % self.slots_per_u + 1
-        if u > self.max_u:
-            raise RackOverflowError(
-                f"Rack {self.rack_id}: required U{u} exceeds max_u={self.max_u}"
-            )
+        if self.allocation_direction == "bottom_up":
+            u = self.max_u - panel_index
+            if u < 1:
+                raise RackOverflowError(
+                    f"Rack {self.rack_id}: allocation requires U{u} which is below minimum U1"
+                )
+        else:
+            u = panel_index + 1
+            if u > self.max_u:
+                raise RackOverflowError(
+                    f"Rack {self.rack_id}: required U{u} exceeds max_u={self.max_u}"
+                )
         self.panels.add(u)
         return SlotRef(self.rack_id, u, slot)
 
@@ -142,7 +157,12 @@ def _session(
 
 def allocate(project: ProjectInput) -> dict[str, Any]:
     rack_allocators = {
-        rack.id: RackSlotAllocator(rack.id, project.settings.panel.slots_per_u, rack.max_u)
+        rack.id: RackSlotAllocator(
+            rack.id,
+            project.settings.panel.slots_per_u,
+            rack.max_u,
+            project.settings.panel.allocation_direction,
+        )
         for rack in project.racks
     }
     modules: list[dict[str, Any]] = []

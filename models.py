@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 SUPPORTED_ENDPOINT_TYPES = {"mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"}
 SUPPORTED_SLOT_CATEGORIES = {"mpo_e2e", "lc_mmf", "lc_smf", "utp"}
 SUPPORTED_PEER_SORT_STRATEGIES = {"natural_trailing_digits", "lexicographic"}
+SUPPORTED_ALLOCATION_DIRECTIONS = {"top_down", "bottom_up"}
 
 
 class ProjectMeta(BaseModel):
@@ -84,6 +85,15 @@ class PanelSettings(BaseModel):
 
     slots_per_u: int = 4
     allocation_direction: str = "top_down"
+
+    @model_validator(mode="after")
+    def validate_allocation_direction(self) -> "PanelSettings":
+        if self.allocation_direction not in SUPPORTED_ALLOCATION_DIRECTIONS:
+            raise ValueError(
+                f"unsupported allocation_direction: {self.allocation_direction!r}; "
+                f"allowed: {sorted(SUPPORTED_ALLOCATION_DIRECTIONS)}"
+            )
+        return self
 
 
 class SettingsModel(BaseModel):
