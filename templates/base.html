@@ -44,6 +44,44 @@
       }
     }
 
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --border: #e5e7eb;
+      --nav-bg: #0f172a;
+      --nav-link: #dbeafe;
+      --nav-link-hover: #ffffff;
+      --input-bg: #ffffff;
+      --table-head-bg: #f8fafc;
+      --flash-bg: #fef3c7;
+      --flash-border: #fde68a;
+      --flash-text: #92400e;
+      --shadow: 0 4px 14px rgba(17, 24, 39, 0.08);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --surface: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #60a5fa;
+      --border: #374151;
+      --nav-bg: #020617;
+      --nav-link: #bfdbfe;
+      --nav-link-hover: #ffffff;
+      --input-bg: #0f172a;
+      --table-head-bg: #1f2937;
+      --flash-bg: #422006;
+      --flash-border: #854d0e;
+      --flash-text: #fbbf24;
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -62,7 +100,23 @@
       display: flex;
       gap: 16px;
       align-items: center;
+      justify-content: space-between;
       box-shadow: var(--shadow);
+    }
+
+    .nav-left {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .theme-toggle {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 13px;
     }
 
     nav a {
@@ -181,7 +235,10 @@
 </head>
 <body>
 <nav>
-  <a href="/upload">Upload</a>
+  <div class="nav-left">
+    <a href="/upload">Upload</a>
+  </div>
+  <button id="theme-toggle" class="theme-toggle" type="button">Theme: System</button>
 </nav>
 <main>
 {% with messages = get_flashed_messages() %}
@@ -191,5 +248,52 @@
 {% endwith %}
 {% block content %}{% endblock %}
 </main>
+<script>
+  (() => {
+    const storageKey = "patchwork-theme";
+    const root = document.documentElement;
+    const button = document.getElementById("theme-toggle");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const getEffectiveTheme = (theme) => {
+      if (theme === "light" || theme === "dark") {
+        return theme;
+      }
+      return mediaQuery.matches ? "dark" : "light";
+    };
+
+    const applyTheme = (theme) => {
+      if (theme === "light" || theme === "dark") {
+        root.setAttribute("data-theme", theme);
+      } else {
+        root.removeAttribute("data-theme");
+      }
+      if (button) {
+        const effective = getEffectiveTheme(theme);
+        const label = theme === "system" ? `Theme: System (${effective})` : `Theme: ${theme}`;
+        button.textContent = label;
+      }
+    };
+
+    const getStoredTheme = () => localStorage.getItem(storageKey) || "system";
+
+    applyTheme(getStoredTheme());
+
+    if (button) {
+      button.addEventListener("click", () => {
+        const current = getStoredTheme();
+        const next = current === "light" ? "dark" : current === "dark" ? "system" : "light";
+        localStorage.setItem(storageKey, next);
+        applyTheme(next);
+      });
+    }
+
+    mediaQuery.addEventListener("change", () => {
+      if (getStoredTheme() === "system") {
+        applyTheme("system");
+      }
+    });
+  })();
+</script>
 </body>
 </html>
