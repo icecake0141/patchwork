@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SUPPORTED_ENDPOINT_TYPES = {"mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"}
+SUPPORTED_SLOT_CATEGORIES = {"mpo_e2e", "lc_mmf", "lc_smf", "utp"}
 
 
 class ProjectMeta(BaseModel):
@@ -60,6 +61,16 @@ class Ordering(BaseModel):
         default_factory=lambda: ["mpo_e2e", "lc_mmf", "lc_smf", "utp"]
     )
     peer_sort: str = "natural_trailing_digits"
+
+    @model_validator(mode="after")
+    def validate_slot_category_priority(self) -> "Ordering":
+        unknown = [c for c in self.slot_category_priority if c not in SUPPORTED_SLOT_CATEGORIES]
+        if unknown:
+            raise ValueError(
+                f"unknown slot_category_priority entries: {unknown}; "
+                f"allowed: {sorted(SUPPORTED_SLOT_CATEGORIES)}"
+            )
+        return self
 
 
 class PanelSettings(BaseModel):

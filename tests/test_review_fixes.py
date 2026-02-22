@@ -151,21 +151,21 @@ def test_upload_invalid_schema_shows_flash(tmp_path) -> None:
 
 
 def test_upload_stores_only_trial_id_in_session(tmp_path) -> None:
-        import io
+    import io
 
-        client = _make_client(str(tmp_path / "t.db"))
-        payload = b"version: 1\nproject:\n  name: sample\nracks:\n  - id: R01\n    name: Rack-01\n  - id: R02\n    name: Rack-02\ndemands:\n  - id: D001\n    src: R01\n    dst: R02\n    endpoint_type: mpo12\n    count: 1\n"
-        resp = client.post(
-                "/upload",
-                data={"project_yaml": (io.BytesIO(payload), "ok.yaml")},
-                content_type="multipart/form-data",
-                follow_redirects=False,
-        )
-        assert resp.status_code == 302
-        assert resp.headers["Location"].endswith("/trial")
-        with client.session_transaction() as sess:
-                assert "trial_id" in sess
-                assert not any(str(k).startswith("trial:") for k in sess.keys())
+    client = _make_client(str(tmp_path / "t.db"))
+    payload = b"version: 1\nproject:\n  name: sample\nracks:\n  - id: R01\n    name: Rack-01\n  - id: R02\n    name: Rack-02\ndemands:\n  - id: D001\n    src: R01\n    dst: R02\n    endpoint_type: mpo12\n    count: 1\n"
+    resp = client.post(
+        "/upload",
+        data={"project_yaml": (io.BytesIO(payload), "ok.yaml")},
+        content_type="multipart/form-data",
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/trial")
+    with client.session_transaction() as sess:
+        assert "trial_id" in sess
+        assert not any(str(k).startswith("trial:") for k in sess.keys())
 
 
 # ---------------------------------------------------------------------------
