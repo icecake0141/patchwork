@@ -14,18 +14,31 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Cancel in-progress runs for the same workflow + PR/branch to avoid wasting runner minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Minimal permissions — both jobs only need to read repository contents.
+permissions:
+  contents: read
 
 jobs:
   lint-and-typecheck:
-    name: Lint / Format / Type Check (Python ${{ matrix.python-version }})
+    # Lint, format, and type-check run on a single Python version.
+    # mypy is configured for python_version = "3.10"; no benefit from repeating on 3.11/3.12.
+    name: Lint / Format / Type Check
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout
@@ -34,7 +47,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.10"
           cache: pip
 
       - name: Install dependencies
@@ -51,16 +64,15 @@ jobs:
       - name: Run mypy
         run: mypy .
 
-      - name: Run pre-commit hooks
-        run: pre-commit run --all-files --show-diff-on-failure
-
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # PRs use a single Python version to keep CI fast.
+        # Push to main expands to the full compatibility matrix.
+        python-version: ${{ fromJSON(github.ref == 'refs/heads/main' && '["3.10","3.11","3.12"]' || '["3.10"]') }}
 
     steps:
       - name: Checkout
