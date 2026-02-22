@@ -114,6 +114,23 @@ The optional `settings.ordering.slot_category_priority` list controls the order 
 demand categories are allocated to rack slots. The default order is
 `[mpo_e2e, lc_mmf, lc_smf, utp]`. Change it to allocate categories in a different order,
 or omit categories entirely to skip them. Unknown categories are rejected at load time.
+
+The optional `settings.panel.allocation_direction` field controls which end of the rack
+panels are filled from. Allowed values:
+
+| Value        | Description                                         |
+|--------------|-----------------------------------------------------|
+| `top_down`   | Panels allocated starting from U1 upward (default). |
+| `bottom_up`  | Panels allocated starting from the highest U downward. |
+
+Example:
+```yaml
+settings:
+  panel:
+    slots_per_u: 4
+    allocation_direction: bottom_up
+```
+
 See `examples/quick-start/README.md` for the full field reference.
 
 ### Output files

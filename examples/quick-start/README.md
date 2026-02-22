@@ -105,11 +105,11 @@ settings:
 | `ordering.slot_category_priority` | Priority order for slot allocation by category (`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`). Categories are allocated in the listed order; categories absent from the list are silently skipped; unknown categories are rejected by validation. | List of strings (subset of `mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`) | **Active** |
 | `ordering.peer_sort` | Intended peer rack sorting strategy. | Current default: `natural_trailing_digits` | **Reserved (currently not used by allocator logic)** |
 | `panel.slots_per_u` | Number of module slots in each 1U panel; affects panel/slot progression and panel count. | Positive integer (default `4`) | **Active** |
-| `panel.allocation_direction` | Intended panel fill direction. | Current default: `top_down` | **Reserved (currently not used by allocator logic)** |
+| `panel.allocation_direction` | Panel fill direction. `top_down` fills from U1 upward (default); `bottom_up` fills from the rack's highest U downward. | `top_down` or `bottom_up` (default: `top_down`) | **Active** |
 
 Notes:
 - Unknown extra keys under `settings` are rejected by schema validation (`extra="forbid"`).
-- Some fields currently behave as configuration placeholders and are documented for forward compatibility.
+- Fields marked **Reserved** behave as configuration placeholders and are documented for forward compatibility.
 
 ### Sample `project.yaml`
 
@@ -308,7 +308,7 @@ settings:
 | `ordering.slot_category_priority` | カテゴリ別（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`）のスロット割り当て優先順。リストの順に割り当てる。リストに含まれないカテゴリはスキップ。不明なカテゴリはバリデーションエラー。 | 文字列リスト（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp` の部分集合） | **有効** |
 | `ordering.peer_sort` | ピアラックの並び順戦略を指定する想定項目。 | 既定値 `natural_trailing_digits` | **予約（現行アロケータでは未使用）** |
 | `panel.slots_per_u` | 1Uパネル内のスロット数。スロット進行・必要パネル数に影響。 | 正の整数（既定 `4`） | **有効** |
-| `panel.allocation_direction` | パネルを埋める方向を指定する想定項目。 | 既定値 `top_down` | **予約（現行アロケータでは未使用）** |
+| `panel.allocation_direction` | パネルを埋める方向。`top_down` はU1から上方向（既定値）、`bottom_up` はラックの最上位Uから下方向に割り当て。 | `top_down` または `bottom_up`（既定値: `top_down`） | **有効** |
 
 補足:
 - `settings` 配下で未定義の追加キーはスキーマ検証でエラーになります（`extra="forbid"`）。
