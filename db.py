@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS revision (
   result_json TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES project(project_id)
 );
+CREATE TABLE IF NOT EXISTS trial (
+    trial_id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    input_yaml TEXT NOT NULL,
+    result_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS panel (
   panel_id TEXT PRIMARY KEY,
   revision_id TEXT NOT NULL,
@@ -217,3 +223,15 @@ class Database:
             return conn.execute(
                 "SELECT * FROM revision WHERE revision_id=?", (revision_id,)
             ).fetchone()
+
+    def save_trial(self, trial_id: str, input_yaml: str, result: dict[str, Any]) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO trial(trial_id,created_at,input_yaml,result_json) VALUES(?,?,?,?)",
+                (trial_id, now, input_yaml, json.dumps(result, default=str)),
+            )
+
+    def get_trial(self, trial_id: str) -> sqlite3.Row | None:
+        with self.connect() as conn:
+            return conn.execute("SELECT * FROM trial WHERE trial_id=?", (trial_id,)).fetchone()

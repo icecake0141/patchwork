@@ -53,8 +53,7 @@ def create_app() -> Flask:
             trial_id = str(uuid4())
             result = allocate(project)
             session["trial_id"] = trial_id
-            session[f"trial:{trial_id}:input_yaml"] = raw
-            session[f"trial:{trial_id}:result"] = json.dumps(result, default=str)
+            db.save_trial(trial_id, raw, result)
             return redirect(url_for("trial"))
         projects = db.list_projects()
         return render_template("upload.html", projects=projects)
@@ -65,7 +64,11 @@ def create_app() -> Flask:
         if not trial_id:
             flash("No active trial")
             return redirect(url_for("upload"))
-        result = json.loads(session[f"trial:{trial_id}:result"])
+        trial = db.get_trial(trial_id)
+        if not trial:
+            flash("No active trial")
+            return redirect(url_for("upload"))
+        result = json.loads(trial["result_json"])
         topology_svg = render_topology_svg(result)
         racks = sorted({p["rack_id"] for p in result["panels"]})
         rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
@@ -79,12 +82,16 @@ def create_app() -> Flask:
         if not trial_id:
             flash("No active trial")
             return redirect(url_for("upload"))
+        trial = db.get_trial(trial_id)
+        if not trial:
+            flash("No active trial")
+            return redirect(url_for("upload"))
         project_name = (
             request.form.get("project_name", "untitled-project").strip() or "untitled-project"
         )
         note = request.form.get("note")
-        input_yaml = session[f"trial:{trial_id}:input_yaml"]
-        result = json.loads(session[f"trial:{trial_id}:result"])
+        input_yaml = trial["input_yaml"]
+        result = json.loads(trial["result_json"])
         project_id, revision_id = db.save_revision(project_name, note, input_yaml, result)
         flash(f"Saved revision {revision_id}")
         return redirect(url_for("project_detail", project_id=project_id, revision_id=revision_id))
