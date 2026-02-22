@@ -94,6 +94,23 @@ settings:
     allocation_direction: top_down
 ```
 
+#### `settings` field details
+
+| Path | Meaning | Allowed / expected values | Current implementation status |
+|------|---------|---------------------------|-------------------------------|
+| `fixed_profiles.lc_demands.trunk_polarity` | Trunk polarity used for LC demand trunks (`mmf_lc_duplex` / `smf_lc_duplex`). Reflected in cable `polarity_type`. | Common values: `A` / `B` (string) | **Active** |
+| `fixed_profiles.lc_demands.breakout_module_variant` | Variant label recorded on LC breakout modules (`polarity_variant`). | String (example: `AF`, `BF`) | **Active** |
+| `fixed_profiles.mpo_e2e.trunk_polarity` | Trunk polarity used for `mpo12` end-to-end trunks. Reflected in cable `polarity_type`. | Common values: `A` / `B` (string) | **Active** |
+| `fixed_profiles.mpo_e2e.pass_through_variant` | Variant label recorded on MPO pass-through modules (`polarity_variant`). | String (example: `A`, `B`) | **Active** |
+| `ordering.slot_category_priority` | Intended priority for slot allocation by category (`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`). | List of strings | **Reserved (currently not used by allocator logic)** |
+| `ordering.peer_sort` | Intended peer rack sorting strategy. | Current default: `natural_trailing_digits` | **Reserved (currently not used by allocator logic)** |
+| `panel.slots_per_u` | Number of module slots in each 1U panel; affects panel/slot progression and panel count. | Positive integer (default `4`) | **Active** |
+| `panel.allocation_direction` | Intended panel fill direction. | Current default: `top_down` | **Reserved (currently not used by allocator logic)** |
+
+Notes:
+- Unknown extra keys under `settings` are rejected by schema validation (`extra="forbid"`).
+- Some fields currently behave as configuration placeholders and are documented for forward compatibility.
+
 ### Sample `project.yaml`
 
 ```yaml
@@ -224,3 +241,128 @@ Sample `result.json` metrics section:
   "session_count": 35
 }
 ```
+
+---
+
+## 日本語（後半の和訳）
+
+## 入力形式 — `project.yaml`
+
+`project.yaml` は、ラック定義・需要（demands）・任意の設定（settings）を記述します。
+
+### トップレベル項目
+
+| 項目        | 型      | 必須 | 説明 |
+|-------------|---------|------|------|
+| `version`   | integer | Yes  | スキーマバージョン。`1` 固定。 |
+| `project`   | object  | Yes  | プロジェクト情報（`name`、任意で `note`）。 |
+| `racks`     | list    | Yes  | ラック定義（下記参照）。 |
+| `demands`   | list    | Yes  | 配線需要（下記参照）。 |
+| `settings`  | object  | No   | 割り当て設定（未指定時はデフォルト）。 |
+
+### `racks` の各要素
+
+| 項目     | 型      | 必須 | 説明 |
+|----------|---------|------|------|
+| `id`     | string  | Yes  | 一意なラックID（例: `R01`）。 |
+| `name`   | string  | Yes  | 表示名。 |
+| `max_u`  | integer | No   | ラック高さ（U）。デフォルト `42`。 |
+
+### `demands` の各要素
+
+| 項目            | 型      | 必須 | 説明 |
+|-----------------|---------|------|------|
+| `id`            | string  | Yes  | 一意な需要ID（例: `D001`）。 |
+| `src`           | string  | Yes  | 送信元ラックの `id`。 |
+| `dst`           | string  | Yes  | 送信先ラックの `id`。 |
+| `endpoint_type` | string  | Yes  | 接続種別。`mmf_lc_duplex` / `smf_lc_duplex` / `mpo12` / `utp_rj45`。 |
+| `count`         | integer | Yes  | 必要接続数（`> 0`）。 |
+
+### `settings`（任意。全項目デフォルトあり）
+
+```yaml
+settings:
+  fixed_profiles:
+    lc_demands:
+      trunk_polarity: A          # "A" or "B"
+      breakout_module_variant: AF
+    mpo_e2e:
+      trunk_polarity: B
+      pass_through_variant: A
+  ordering:
+    slot_category_priority: [mpo_e2e, lc_mmf, lc_smf, utp]
+    peer_sort: natural_trailing_digits
+  panel:
+    slots_per_u: 4               # 1Uパッチパネルあたりのスロット数
+    allocation_direction: top_down
+```
+
+#### `settings` 各項目の説明
+
+| パス | 意味 | 設定可能な値（想定） | 現在の実装での反映状況 |
+|------|------|----------------------|------------------------|
+| `fixed_profiles.lc_demands.trunk_polarity` | LC需要（`mmf_lc_duplex` / `smf_lc_duplex`）で使うトランク極性。ケーブルの `polarity_type` に反映。 | 一般的には `A` / `B`（文字列） | **有効** |
+| `fixed_profiles.lc_demands.breakout_module_variant` | LCブレイクアウトモジュールに記録するバリアント名（`polarity_variant`）。 | 文字列（例: `AF`, `BF`） | **有効** |
+| `fixed_profiles.mpo_e2e.trunk_polarity` | `mpo12` エンドツーエンド需要で使うトランク極性。ケーブルの `polarity_type` に反映。 | 一般的には `A` / `B`（文字列） | **有効** |
+| `fixed_profiles.mpo_e2e.pass_through_variant` | MPOパススルーモジュールに記録するバリアント名（`polarity_variant`）。 | 文字列（例: `A`, `B`） | **有効** |
+| `ordering.slot_category_priority` | カテゴリ別（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`）のスロット割り当て優先順を指定する想定項目。 | 文字列リスト | **予約（現行アロケータでは未使用）** |
+| `ordering.peer_sort` | ピアラックの並び順戦略を指定する想定項目。 | 既定値 `natural_trailing_digits` | **予約（現行アロケータでは未使用）** |
+| `panel.slots_per_u` | 1Uパネル内のスロット数。スロット進行・必要パネル数に影響。 | 正の整数（既定 `4`） | **有効** |
+| `panel.allocation_direction` | パネルを埋める方向を指定する想定項目。 | 既定値 `top_down` | **予約（現行アロケータでは未使用）** |
+
+補足:
+- `settings` 配下で未定義の追加キーはスキーマ検証でエラーになります（`extra="forbid"`）。
+- 一部項目は将来拡張を見越したプレースホルダとして定義されています。
+
+### `project.yaml` サンプル
+
+（上記の英語セクションと同じ内容）
+
+このディレクトリの `sample-project.yaml` には、`settings` を含む完全版があります。
+
+---
+
+## 出力ファイル
+
+### `sessions.csv`
+
+ポート間パッチ接続を1行ずつ表したCSVです。主な列:
+
+- `project_id`: 保存済みプロジェクトID
+- `revision_id`: 保存済みリビジョンID
+- `session_id`: 各ポート割り当ての決定的ユニークID
+- `media`: 接続種別（`mmf_lc_duplex` / `smf_lc_duplex` / `mpo12` / `utp_rj45`）
+- `cable_id`: ケーブルID（同一ケーブル上の複数ポートで共有）
+- `cable_seq`: 並び順用の連番
+- `adapter_type`: 両端で使用したモジュール種別
+- `label_a`, `label_b`: 送信元/送信先ラベル（`{rack}U{u}S{slot}P{port}`）
+- `src_*`, `dst_*`: 送信元/送信先のラック・面・U・スロット・ポート
+- `fiber_a`, `fiber_b`: LC接続時のファイバ芯線番号
+- `notes`: 備考（既定は空）
+
+---
+
+### `bom.csv`
+
+必要部材（パネル・モジュール・ケーブル）を集計した部材表（BOM）です。列:
+
+- `item_type`: `panel` / `module` / `cable`
+- `description`: 部材の説明（型番バリエーション含む）
+- `quantity`: 必要数量
+
+---
+
+### `result.json`
+
+割り当て結果の完全な構造化JSONです。主なトップレベルキー:
+
+- `project`: 検証済み入力のエコー
+- `input_hash`: 正規化入力の SHA-256（差分検知用）
+- `panels`: 各ラックに割り当てられた1Uパネル一覧
+- `modules`: パネルに挿入されたモジュール一覧
+- `cables`: 物理トランクケーブル一覧（種別・極性を含む）
+- `sessions`: ポート間パッチ割り当て一覧（`sessions.csv` と同等）
+- `warnings`: 非致命的な警告
+- `errors`: 致命的エラー（例: ラックあふれ）
+- `metrics`: 集計値（`rack_count`, `panel_count`, `module_count`, `cable_count`, `session_count`）
+- `pair_details`: ラックペアごとのスロット利用詳細
