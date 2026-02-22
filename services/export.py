@@ -99,31 +99,23 @@ def result_json(result: dict[str, Any]) -> str:
 
 def wiring_svg(result: dict[str, Any]) -> str:
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", 0) for c in result.get("cables", [])}
-    rows_by_cable: dict[str, dict[str, Any]] = {}
 
+    groups: dict[tuple[str, int, int, str, int, int, str], list[dict[str, Any]]] = {}
     for session in result.get("sessions", []):
-        cable_id = session["cable_id"]
-        row = rows_by_cable.get(cable_id)
-        if row is None:
-            row = {
-                "cable_id": cable_id,
-                "cable_seq": cable_seq_map.get(cable_id, 0),
-                "media": session["media"],
-                "src_rack": session["src_rack"],
-                "src_u": session["src_u"],
-                "src_slot": session["src_slot"],
-                "dst_rack": session["dst_rack"],
-                "dst_u": session["dst_u"],
-                "dst_slot": session["dst_slot"],
-                "session_count": 0,
-            }
-            rows_by_cable[cable_id] = row
-        row["session_count"] += 1
+        key = (
+            session["src_rack"],
+            session["src_u"],
+            session["src_slot"],
+            session["dst_rack"],
+            session["dst_u"],
+            session["dst_slot"],
+            session["media"],
+        )
+        groups.setdefault(key, []).append(session)
 
-    rows = sorted(
-        rows_by_cable.values(),
-        key=lambda r: (r["cable_seq"] if isinstance(r["cable_seq"], int) else 0, r["cable_id"]),
-    )
+    sorted_group_keys = sorted(groups.keys())
+    for key in sorted_group_keys:
+        groups[key].sort(key=lambda session: (session["src_port"], session["dst_port"]))
 
     media_color = {
         "mmf_lc_duplex": "#2563eb",
@@ -132,44 +124,69 @@ def wiring_svg(result: dict[str, Any]) -> str:
         "utp_rj45": "#ea580c",
     }
 
-    row_h = 28
-    top = 80
-    height = top + len(rows) * row_h + 30
-    width = 1200
+    width = 1280
+    top = 88
+    group_header_h = 28
+    row_h = 18
+    group_gap = 16
+
+    height = top + 20
+    for key in sorted_group_keys:
+        height += group_header_h + len(groups[key]) * row_h + group_gap
 
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
         '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>',
         '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Cable Wiring Diagram</text>',
-        '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">One line per cable_id. Ports indicates how many sessions share the cable.</text>',
-        '<text x="20" y="72" font-size="12" font-family="Arial, sans-serif" fill="#111827">Source</text>',
-        '<text x="560" y="72" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable</text>',
-        '<text x="930" y="72" font-size="12" font-family="Arial, sans-serif" fill="#111827">Destination</text>',
+        '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair, sorted by source port number.</text>',
+        '<text x="20" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Src panel/slot</text>',
+        '<text x="430" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
+        '<text x="1030" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
     ]
 
-    for idx, row in enumerate(rows):
-        y = top + idx * row_h
-        stroke = media_color.get(row["media"], "#334155")
-        src_label = escape(f"{row['src_rack']} U{row['src_u']}S{row['src_slot']}")
-        dst_label = escape(f"{row['dst_rack']} U{row['dst_u']}S{row['dst_slot']}")
-        cable_label = escape(
-            f"#{row['cable_seq']} {row['media']} ({row['session_count']} port{'s' if row['session_count'] != 1 else ''})"
-        )
+    y = top
+    for src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media in sorted_group_keys:
+        sessions = groups[(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)]
+        stroke = media_color.get(media, "#334155")
+
+        src_group_label = escape(f"{src_rack} U{src_u}S{src_slot}")
+        dst_group_label = escape(f"{dst_rack} U{dst_u}S{dst_slot}")
+        group_title = escape(f"{media} ({len(sessions)} connection{'s' if len(sessions) != 1 else ''})")
 
         lines.append(
-            f'<line x1="380" y1="{y}" x2="820" y2="{y}" stroke="{stroke}" stroke-width="2"/>'
-        )
-        lines.append(f'<circle cx="380" cy="{y}" r="4" fill="{stroke}"/>')
-        lines.append(f'<circle cx="820" cy="{y}" r="4" fill="{stroke}"/>')
-        lines.append(
-            f'<text x="20" y="{y + 4}" font-size="12" font-family="Arial, sans-serif" fill="#111827">{src_label}</text>'
+            f'<rect x="18" y="{y - 16}" width="1244" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
         )
         lines.append(
-            f'<text x="560" y="{y + 4}" font-size="12" font-family="Arial, sans-serif" fill="#111827">{cable_label}</text>'
+            f'<text x="24" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{src_group_label}</text>'
         )
         lines.append(
-            f'<text x="860" y="{y + 4}" font-size="12" font-family="Arial, sans-serif" fill="#111827">{dst_label}</text>'
+            f'<text x="430" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{group_title}</text>'
         )
+        lines.append(
+            f'<text x="1030" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{dst_group_label}</text>'
+        )
+
+        for index, session in enumerate(sessions):
+            line_y = y + 16 + index * row_h
+            src_port = session["src_port"]
+            dst_port = session["dst_port"]
+            cable_seq = cable_seq_map.get(session["cable_id"], "")
+            cable_label = escape(f"#{cable_seq} {session['cable_id']}")
+
+            lines.append(
+                f'<line x1="360" y1="{line_y - 4}" x2="980" y2="{line_y - 4}" stroke="{stroke}" stroke-width="1.6"/>'
+            )
+            lines.append(
+                f'<text x="24" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}</text>'
+            )
+            lines.append(
+                f'<text x="430" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
+            )
+            lines.append(
+                f'<text x="1030" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
+            )
+
+        y += group_header_h + len(sessions) * row_h + group_gap
 
     lines.append("</svg>")
     return "".join(lines)

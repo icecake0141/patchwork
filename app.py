@@ -80,8 +80,13 @@ def create_app() -> Flask:
         ]
         racks = sorted({p["rack_id"] for p in result["panels"]})
         rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
+        wiring_svg_text = wiring_svg(result)
         return render_template(
-            "trial.html", result=result, topology_rows=topology_rows, rack_svgs=rack_svgs
+            "trial.html",
+            result=result,
+            topology_rows=topology_rows,
+            rack_svgs=rack_svgs,
+            wiring_svg=wiring_svg_text,
         )
 
     @app.post("/save")
@@ -114,6 +119,7 @@ def create_app() -> Flask:
         result = json.loads(chosen["result_json"]) if chosen else None
         topology_rows: list[dict[str, str | int]] = []
         rack_svgs: dict[str, str] = {}
+        wiring_svg_text = ""
         if result:
             topology_counts: dict[tuple[str, str, str], int] = {}
             for session_row in result["sessions"]:
@@ -126,6 +132,7 @@ def create_app() -> Flask:
             ]
             racks = sorted({panel["rack_id"] for panel in result["panels"]})
             rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
+            wiring_svg_text = wiring_svg(result)
         return render_template(
             "project_detail.html",
             project_id=project_id,
@@ -134,6 +141,7 @@ def create_app() -> Flask:
             result=result,
             topology_rows=topology_rows,
             rack_svgs=rack_svgs,
+            wiring_svg=wiring_svg_text,
         )
 
     @app.get("/revisions/<revision_id>/export/sessions.csv")
