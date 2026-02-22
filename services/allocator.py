@@ -164,8 +164,11 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
         pk = pair_key(d.src, d.dst)
         normalized_demands[pk][d.endpoint_type] += d.count
 
+    peer_sort_strategy = project.settings.ordering.peer_sort
+    pair_sort_key = str if peer_sort_strategy == "lexicographic" else natural_sort_key
     sorted_pairs = sorted(
-        normalized_demands.keys(), key=lambda p: (natural_sort_key(p[0]), natural_sort_key(p[1]))
+        normalized_demands.keys(),
+        key=lambda p: (pair_sort_key(p[0]), pair_sort_key(p[1])),
     )
 
     errors: list[str] = []
@@ -187,7 +190,10 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
         if category == "utp":
             # Allocate UTP slots at this priority position
             for rack_id, peer_counts in rack_peer_counts.items():
-                peers = sorted(peer_counts.keys(), key=natural_sort_key)
+                peers = sorted(
+                    peer_counts.keys(),
+                    key=str if peer_sort_strategy == "lexicographic" else natural_sort_key,
+                )
                 current_slot: SlotRef | None = None
                 used_in_slot = 0
                 for peer in peers:

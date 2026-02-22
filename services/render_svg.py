@@ -9,7 +9,6 @@ from typing import Any
 
 from services.allocator import pair_key
 
-
 MODULE_LABELS = {
     "mpo12_pass_through_12port": "MPO-12 pass-through (12-port)",
     "lc_breakout_2xmpo12_to_12xlcduplex": "2x MPO-12 to 12x LC duplex Break-out",

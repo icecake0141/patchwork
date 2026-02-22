@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SUPPORTED_ENDPOINT_TYPES = {"mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"}
 SUPPORTED_SLOT_CATEGORIES = {"mpo_e2e", "lc_mmf", "lc_smf", "utp"}
+SUPPORTED_PEER_SORT_STRATEGIES = {"natural_trailing_digits", "lexicographic"}
 
 
 class ProjectMeta(BaseModel):
@@ -69,6 +70,11 @@ class Ordering(BaseModel):
             raise ValueError(
                 f"unknown slot_category_priority entries: {unknown}; "
                 f"allowed: {sorted(SUPPORTED_SLOT_CATEGORIES)}"
+            )
+        if self.peer_sort not in SUPPORTED_PEER_SORT_STRATEGIES:
+            raise ValueError(
+                f"unsupported peer_sort strategy: {self.peer_sort!r}; "
+                f"allowed: {sorted(SUPPORTED_PEER_SORT_STRATEGIES)}"
             )
         return self
 
