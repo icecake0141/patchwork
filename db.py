@@ -142,11 +142,13 @@ class Database:
                     json.dumps(result, default=str),
                 ),
             )
+            cable_id_map: dict[str, str] = {}
             for panel in result["panels"]:
+                panel_db_id = f"{revision_id}:{panel['panel_id']}"
                 conn.execute(
                     "INSERT INTO panel(panel_id,revision_id,rack_id,u,slots_per_u) VALUES(?,?,?,?,?)",
                     (
-                        panel["panel_id"],
+                        panel_db_id,
                         revision_id,
                         panel["rack_id"],
                         panel["u"],
@@ -154,10 +156,11 @@ class Database:
                     ),
                 )
             for module in result["modules"]:
+                module_db_id = f"{revision_id}:{module['module_id']}"
                 conn.execute(
                     "INSERT INTO module(module_id,revision_id,rack_id,panel_u,slot,module_type,fiber_kind,polarity_variant,peer_rack_id,dedicated) VALUES(?,?,?,?,?,?,?,?,?,?)",
                     (
-                        module["module_id"],
+                        module_db_id,
                         revision_id,
                         module["rack_id"],
                         module["panel_u"],
@@ -170,10 +173,12 @@ class Database:
                     ),
                 )
             for cable in result["cables"]:
+                cable_db_id = f"{revision_id}:{cable['cable_id']}"
+                cable_id_map[cable["cable_id"]] = cable_db_id
                 conn.execute(
                     "INSERT INTO cable(cable_id,revision_id,cable_type,fiber_kind,polarity_type) VALUES(?,?,?,?,?)",
                     (
-                        cable["cable_id"],
+                        cable_db_id,
                         revision_id,
                         cable["cable_type"],
                         cable["fiber_kind"],
@@ -181,13 +186,14 @@ class Database:
                     ),
                 )
             for session in result["sessions"]:
+                session_db_id = f"{revision_id}:{session['session_id']}"
                 conn.execute(
                     "INSERT INTO session(session_id,revision_id,media,cable_id,adapter_type,label_a,label_b,src_rack,src_face,src_u,src_slot,src_port,dst_rack,dst_face,dst_u,dst_slot,dst_port,fiber_a,fiber_b,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
-                        session["session_id"],
+                        session_db_id,
                         revision_id,
                         session["media"],
-                        session["cable_id"],
+                        cable_id_map.get(session["cable_id"], session["cable_id"]),
                         session["adapter_type"],
                         session["label_a"],
                         session["label_b"],
