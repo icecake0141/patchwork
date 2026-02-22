@@ -123,12 +123,24 @@ panels are filled from. Allowed values:
 | `top_down`   | Panels allocated starting from U1 upward (default). |
 | `bottom_up`  | Panels allocated starting from the highest U downward. |
 
+The optional `settings.panel.u_label_mode` field controls how U numbers are shown in
+the Rack Panel Occupancy UI labels:
+
+| Value         | Description |
+|---------------|-------------|
+| `ascending`   | Display U labels as `U1`, `U2`, `U3`, ... from top to bottom (default). |
+| `descending`  | Display U labels as `Umax`, `Umax-1`, ... from top to bottom (for example `U42`, `U41`, ... on a 42U rack). |
+
+`u_label_mode` affects the UI label display only. Allocation behavior is controlled by
+`allocation_direction`.
+
 Example:
 ```yaml
 settings:
   panel:
     slots_per_u: 4
     allocation_direction: bottom_up
+    u_label_mode: descending
 ```
 
 See `examples/quick-start/README.md` for the full field reference.
@@ -297,6 +309,16 @@ demands:
 任意の `settings.ordering.slot_category_priority` リストで、カテゴリのスロット割り当て順を制御できます。
 デフォルトは `[mpo_e2e, lc_mmf, lc_smf, utp]` です。順序の変更やカテゴリの省略が可能で、
 不明なカテゴリは読み込み時にエラーになります。詳細は `examples/quick-start/README.md` を参照してください。
+
+任意の `settings.panel.u_label_mode` で、Rack Panel Occupancy の U 表示方法を切り替えできます。
+
+| 値            | 説明 |
+|---------------|------|
+| `ascending`   | 上から `U1`, `U2`, `U3`, ... と表示（デフォルト）。 |
+| `descending`  | 上から `Umax`, `Umax-1`, ... と表示（42U ラックなら `U42`, `U41`, ...）。 |
+
+`u_label_mode` は UI 上の U 表示ラベルだけを切り替えます。割り当て動作自体は
+`allocation_direction` で制御されます。
 
 ### 出力ファイル
 

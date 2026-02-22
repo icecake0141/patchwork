@@ -12,7 +12,7 @@ import pytest
 
 from models import ProjectInput
 from services.allocator import allocate, pair_key
-from services.render_svg import render_pair_detail_svg
+from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
 
 # ---------------------------------------------------------------------------
 # pair_key / render_pair_detail_svg consistency
@@ -47,6 +47,39 @@ def test_render_pair_detail_svg_uses_natural_sort_key() -> None:
     # Reverse argument order should produce the same result
     svg_rev = render_pair_detail_svg(result, "R10", "R2")
     assert "ports used: 1" in svg_rev
+
+
+def test_rack_panel_svg_default_u_label_is_ascending() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "ulabel-default"},
+            "racks": [{"id": "R1", "name": "R1", "max_u": 42}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = render_rack_panels_svg(result, "R1")
+    assert "U1</text>" in svg
+
+
+def test_rack_panel_svg_descending_u_label_mode() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "ulabel-desc"},
+            "racks": [{"id": "R1", "name": "R1", "max_u": 42}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+            "settings": {"panel": {"u_label_mode": "descending"}},
+        }
+    )
+    result = allocate(project)
+    svg = render_rack_panels_svg(result, "R1")
+    assert "U42</text>" in svg
 
 
 # ---------------------------------------------------------------------------

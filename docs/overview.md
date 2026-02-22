@@ -30,6 +30,27 @@ settings:
     peer_sort: lexicographic
 ```
 
+## Settings: `panel.u_label_mode`
+
+The `panel.u_label_mode` setting controls how U numbers are displayed in the Rack Panel
+Occupancy UI. This affects display labels only; allocation behavior is controlled by
+`settings.panel.allocation_direction`.
+
+Supported values:
+
+| Value | Behaviour |
+|---|---|
+| `ascending` (default) | Shows U labels as `U1`, `U2`, `U3`, ... from top to bottom. |
+| `descending` | Shows U labels as `Umax`, `Umax-1`, ... from top to bottom (for example `U42`, `U41`, ... on a 42U rack). |
+
+**Example** (project YAML):
+
+```yaml
+settings:
+  panel:
+    u_label_mode: descending
+```
+
 UI pages:
 - Upload
 - Trial

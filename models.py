@@ -85,6 +85,7 @@ class PanelSettings(BaseModel):
 
     slots_per_u: int = 4
     allocation_direction: str = "top_down"
+    u_label_mode: Literal["ascending", "descending"] = "ascending"
 
     @model_validator(mode="after")
     def validate_allocation_direction(self) -> "PanelSettings":

@@ -45,3 +45,4 @@ settings:
   panel:
     slots_per_u: 4
     allocation_direction: top_down
+    u_label_mode: ascending

@@ -42,6 +42,11 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
     rack_panels = [p for p in result["panels"] if p["rack_id"] == rack_id]
     modules = [m for m in result["modules"] if m["rack_id"] == rack_id]
     by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
+    project = result.get("project", {})
+    panel_settings = project.get("settings", {}).get("panel", {})
+    u_label_mode = panel_settings.get("u_label_mode", "ascending")
+    racks = project.get("racks", [])
+    rack_max_u = next((r.get("max_u", 42) for r in racks if r.get("id") == rack_id), 42)
 
     max_label_chars = len("S1: empty")
     max_slots_per_u = 1
@@ -58,7 +63,11 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
     lines = [f'<text x="10" y="18" font-size="14">Rack {rack_id} Panel Occupancy</text>']
     y = 40
     for panel in sorted(rack_panels, key=lambda p: p["u"]):
-        lines.append(f'<text x="10" y="{y}" font-size="12">U{panel["u"]}</text>')
+        if u_label_mode == "descending":
+            label_u = rack_max_u - panel["u"] + 1
+        else:
+            label_u = panel["u"]
+        lines.append(f'<text x="10" y="{y}" font-size="12">U{label_u}</text>')
         for slot in range(1, panel["slots_per_u"] + 1):
             x = 80 + (slot - 1) * (slot_width + slot_gap)
             mod = by_uslot.get((panel["u"], slot))

@@ -92,6 +92,7 @@ settings:
   panel:
     slots_per_u: 4               # Slots per 1U patch panel
     allocation_direction: top_down
+    u_label_mode: ascending      # U label style in Rack Panel Occupancy UI
 ```
 
 #### `settings` field details
@@ -103,13 +104,13 @@ settings:
 | `fixed_profiles.mpo_e2e.trunk_polarity` | Trunk polarity used for `mpo12` end-to-end trunks. Reflected in cable `polarity_type`. | Common values: `A` / `B` (string) | **Active** |
 | `fixed_profiles.mpo_e2e.pass_through_variant` | Variant label recorded on MPO pass-through modules (`polarity_variant`). | String (example: `A`, `B`) | **Active** |
 | `ordering.slot_category_priority` | Priority order for slot allocation by category (`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`). Categories are allocated in the listed order; categories absent from the list are silently skipped; unknown categories are rejected by validation. | List of strings (subset of `mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`) | **Active** |
-| `ordering.peer_sort` | Intended peer rack sorting strategy. | Current default: `natural_trailing_digits` | **Reserved (currently not used by allocator logic)** |
+| `ordering.peer_sort` | Peer rack sorting strategy used for pair processing. | `natural_trailing_digits` (default) or `lexicographic` | **Active** |
 | `panel.slots_per_u` | Number of module slots in each 1U panel; affects panel/slot progression and panel count. | Positive integer (default `4`) | **Active** |
 | `panel.allocation_direction` | Panel fill direction. `top_down` fills from U1 upward (default); `bottom_up` fills from the rack's highest U downward. | `top_down` or `bottom_up` (default: `top_down`) | **Active** |
+| `panel.u_label_mode` | U label style in Rack Panel Occupancy UI. `ascending` shows `U1`, `U2`, ... from top to bottom; `descending` shows `Umax`, `Umax-1`, ... from top to bottom. | `ascending` or `descending` (default: `ascending`) | **Active** |
 
 Notes:
 - Unknown extra keys under `settings` are rejected by schema validation (`extra="forbid"`).
-- Fields marked **Reserved** behave as configuration placeholders and are documented for forward compatibility.
 
 ### Sample `project.yaml`
 
@@ -295,6 +296,7 @@ settings:
   panel:
     slots_per_u: 4               # 1Uパッチパネルあたりのスロット数
     allocation_direction: top_down
+    u_label_mode: ascending      # Rack Panel Occupancy の U 表示方式
 ```
 
 #### `settings` 各項目の説明
@@ -306,13 +308,13 @@ settings:
 | `fixed_profiles.mpo_e2e.trunk_polarity` | `mpo12` エンドツーエンド需要で使うトランク極性。ケーブルの `polarity_type` に反映。 | 一般的には `A` / `B`（文字列） | **有効** |
 | `fixed_profiles.mpo_e2e.pass_through_variant` | MPOパススルーモジュールに記録するバリアント名（`polarity_variant`）。 | 文字列（例: `A`, `B`） | **有効** |
 | `ordering.slot_category_priority` | カテゴリ別（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp`）のスロット割り当て優先順。リストの順に割り当てる。リストに含まれないカテゴリはスキップ。不明なカテゴリはバリデーションエラー。 | 文字列リスト（`mpo_e2e`, `lc_mmf`, `lc_smf`, `utp` の部分集合） | **有効** |
-| `ordering.peer_sort` | ピアラックの並び順戦略を指定する想定項目。 | 既定値 `natural_trailing_digits` | **予約（現行アロケータでは未使用）** |
+| `ordering.peer_sort` | ピアラックの並び順戦略。ペア処理順に反映。 | `natural_trailing_digits`（既定）または `lexicographic` | **有効** |
 | `panel.slots_per_u` | 1Uパネル内のスロット数。スロット進行・必要パネル数に影響。 | 正の整数（既定 `4`） | **有効** |
 | `panel.allocation_direction` | パネルを埋める方向。`top_down` はU1から上方向（既定値）、`bottom_up` はラックの最上位Uから下方向に割り当て。 | `top_down` または `bottom_up`（既定値: `top_down`） | **有効** |
+| `panel.u_label_mode` | Rack Panel Occupancy の U 表示方式。`ascending` は上から `U1`, `U2`, ...、`descending` は上から `Umax`, `Umax-1`, ... を表示。 | `ascending` または `descending`（既定値: `ascending`） | **有効** |
 
 補足:
 - `settings` 配下で未定義の追加キーはスキーマ検証でエラーになります（`extra="forbid"`）。
-- 一部項目は将来拡張を見越したプレースホルダとして定義されています。
 
 ### `project.yaml` サンプル
 
