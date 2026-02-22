@@ -10,6 +10,21 @@ from typing import Any
 from services.allocator import pair_key
 
 
+MODULE_LABELS = {
+    "mpo12_pass_through_12port": "MPO-12 pass-through (12-port)",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "2x MPO-12 to 12x LC duplex Break-out",
+    "utp_6xrj45": "6x RJ45 UTP",
+}
+
+
+MODULE_COLORS = {
+    "empty": "#555555",
+    "mpo12_pass_through_12port": "#FF00FF",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "#87CEEB",
+    "utp_6xrj45": "#90EE90",
+}
+
+
 def render_topology_svg(result: dict[str, Any]) -> str:
     sessions = result["sessions"]
     agg: dict[tuple[str, str, str], int] = defaultdict(int)
@@ -35,11 +50,16 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
         for slot in range(1, panel["slots_per_u"] + 1):
             x = 80 + (slot - 1) * 190
             mod = by_uslot.get((panel["u"], slot))
-            label = mod["module_type"] if mod else "empty"
+            module_type = mod["module_type"] if mod else "empty"
+            label = MODULE_LABELS.get(module_type, module_type)
+            fill_color = MODULE_COLORS.get(module_type, "#eef")
             lines.append(
-                f'<rect x="{x}" y="{y - 12}" width="180" height="18" fill="#eef" stroke="#225"/>'
+                f'<rect x="{x}" y="{y - 12}" width="180" height="18" fill="{fill_color}" stroke="#225"/>'
             )
-            lines.append(f'<text x="{x + 4}" y="{y}" font-size="10">S{slot}: {label}</text>')
+            text_color = "#fff" if module_type == "empty" else "#000"
+            lines.append(
+                f'<text x="{x + 4}" y="{y}" font-size="10" fill="{text_color}">S{slot}: {label}</text>'
+            )
         y += 28
     height = y + 20
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="880" height="{height}">{"".join(lines)}</svg>'
