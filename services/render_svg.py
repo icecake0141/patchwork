@@ -43,18 +43,31 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
     rack_panels = [p for p in result["panels"] if p["rack_id"] == rack_id]
     modules = [m for m in result["modules"] if m["rack_id"] == rack_id]
     by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
+
+    max_label_chars = len("S1: empty")
+    max_slots_per_u = 1
+    for panel in rack_panels:
+        max_slots_per_u = max(max_slots_per_u, panel["slots_per_u"])
+        for slot in range(1, panel["slots_per_u"] + 1):
+            mod = by_uslot.get((panel["u"], slot))
+            module_type = mod["module_type"] if mod else "empty"
+            label = MODULE_LABELS.get(module_type, module_type)
+            max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
+
+    slot_width = max(180, max_label_chars * 6 + 12)
+    slot_gap = 10
     lines = [f'<text x="10" y="18" font-size="14">Rack {rack_id} Panel Occupancy</text>']
     y = 40
     for panel in sorted(rack_panels, key=lambda p: p["u"]):
         lines.append(f'<text x="10" y="{y}" font-size="12">U{panel["u"]}</text>')
         for slot in range(1, panel["slots_per_u"] + 1):
-            x = 80 + (slot - 1) * 190
+            x = 80 + (slot - 1) * (slot_width + slot_gap)
             mod = by_uslot.get((panel["u"], slot))
             module_type = mod["module_type"] if mod else "empty"
             label = MODULE_LABELS.get(module_type, module_type)
             fill_color = MODULE_COLORS.get(module_type, "#eef")
             lines.append(
-                f'<rect x="{x}" y="{y - 12}" width="180" height="18" fill="{fill_color}" stroke="#225"/>'
+                f'<rect x="{x}" y="{y - 12}" width="{slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
             )
             text_color = "#fff" if module_type == "empty" else "#000"
             lines.append(
@@ -62,7 +75,8 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
             )
         y += 28
     height = y + 20
-    return f'<svg xmlns="http://www.w3.org/2000/svg" width="880" height="{height}">{"".join(lines)}</svg>'
+    width = 80 + max_slots_per_u * (slot_width + slot_gap) + 20
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">{"".join(lines)}</svg>'
 
 
 def render_pair_detail_svg(result: dict[str, Any], rack_a: str, rack_b: str) -> str:
