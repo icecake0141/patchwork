@@ -56,3 +56,61 @@ UI pages:
 - Trial
 - Project detail
 - Diff (logical + physical tabs)
+
+## 日本語訳
+
+この実装は、ラック間配線割り当てに関する v0 設計仕様に準拠しています。
+
+- 対応メディア: MMF/SMF LC duplex、MPO12、UTP RJ45。
+- スロットカテゴリ優先順位: MPO E2E → LC MMF → LC SMF → UTP。
+- Mixed-in-U 割り当ては連続スロット予約により有効化されています。
+- 決定的 ID は SHA-256 の正規化文字列を使用します。
+- 保存されたリビジョンでは、生成された `panel/module/cable/session` 行を SQLite に永続化します。
+
+### 設定: `ordering.peer_sort`
+
+`ordering.peer_sort` は、割り当て中にラックのピアペアをどの順序で処理するかを制御します。
+この値は project YAML の `settings.ordering.peer_sort` から読み取られます。
+
+サポート値:
+
+| 値 | 挙動 |
+|---|---|
+| `natural_trailing_digits`（デフォルト） | ラック ID の末尾数値サフィックスを優先して数値順で並べ替え、その後に文字列全体で比較します。`R2` は `R10` より先に並びます。 |
+| `lexicographic` | ラック ID を単純な文字列として並べ替えます。`"1" < "2"` となるため、`R10` は `R2` より先に並びます。 |
+
+上記以外の値は検証時に明確なエラーメッセージで拒否されます。
+
+**例**（project YAML）:
+
+```yaml
+settings:
+  ordering:
+    peer_sort: lexicographic
+```
+
+### 設定: `panel.u_label_mode`
+
+`panel.u_label_mode` は、Rack Panel Occupancy UI における U 番号の表示方法を制御します。
+この設定は表示ラベルのみに影響し、割り当て動作は `settings.panel.allocation_direction` により制御されます。
+
+サポート値:
+
+| 値 | 挙動 |
+|---|---|
+| `ascending`（デフォルト） | 上から下へ `U1`, `U2`, `U3`, ... と表示します。 |
+| `descending` | 上から下へ `Umax`, `Umax-1`, ... と表示します（例: 42U ラックでは `U42`, `U41`, ...）。 |
+
+**例**（project YAML）:
+
+```yaml
+settings:
+  panel:
+    u_label_mode: descending
+```
+
+UI ページ:
+- Upload
+- Trial
+- Project detail
+- Diff（論理 + 物理タブ）

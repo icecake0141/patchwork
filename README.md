@@ -154,6 +154,7 @@ After allocation Patchwork produces three downloadable files:
 | `sessions.csv` | Per-port patch wiring schedule, one row per connection. |
 | `bom.csv`      | Bill of Materials: panels, modules, and cables with quantities. |
 | `result.json`  | Full structured allocation result (panels, modules, cables, sessions, metrics). |
+| `wiring.svg`   | Visual cable wiring diagram (one line per cable, with source/destination panel positions). |
 
 **`sessions.csv` excerpt:**
 ```

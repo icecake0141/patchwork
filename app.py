@@ -16,7 +16,7 @@ from yaml import YAMLError
 from db import Database
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import bom_csv, result_json, sessions_csv
+from services.export import bom_csv, result_json, sessions_csv, wiring_svg
 from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
 
 
@@ -168,6 +168,19 @@ def create_app() -> Flask:
         if not rev:
             return Response("not found", status=404)
         return Response(result_json(json.loads(rev["result_json"])), mimetype="application/json")
+
+    @app.get("/revisions/<revision_id>/export/wiring.svg")
+    def export_wiring_svg(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        svg_text = wiring_svg(result)
+        return Response(
+            svg_text,
+            mimetype="image/svg+xml",
+            headers={"Content-Disposition": f"attachment; filename={revision_id}_wiring.svg"},
+        )
 
     @app.get("/diff/<project_id>")
     def diff(project_id: str) -> str:

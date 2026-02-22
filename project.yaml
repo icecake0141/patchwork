@@ -1,0 +1,55 @@
+version: 1
+project:
+  name: Acme-DC-Cabling
+  note: optional
+racks:
+  - id: R01
+    name: R01
+    max_u: 42
+  - id: R02
+    name: R02
+    max_u: 42
+  - id: R03
+    name: R03
+    max_u: 42
+demands:
+  - id: D001
+    src: R01
+    dst: R02
+    endpoint_type: mmf_lc_duplex
+    count: 14
+  - id: D002
+    src: R01
+    dst: R02
+    endpoint_type: mpo12
+    count: 8
+  - id: D003
+    src: R01
+    dst: R03
+    endpoint_type: utp_rj45
+    count: 7
+  - id: D004
+    src: R01
+    dst: R02
+    endpoint_type: utp_rj45
+    count: 2
+  - id: D005
+    src: R01
+    dst: R02
+    endpoint_type: smf_lc_duplex
+    count: 7
+settings:
+  fixed_profiles:
+    lc_demands:
+      trunk_polarity: A
+      breakout_module_variant: AF
+    mpo_e2e:
+      trunk_polarity: B
+      pass_through_variant: A
+  ordering:
+    slot_category_priority: [mpo_e2e, lc_mmf, lc_smf, utp]
+    peer_sort: natural_trailing_digits
+  panel:
+    slots_per_u: 4
+    allocation_direction: top_down
+    u_label_mode: descending
