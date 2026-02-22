@@ -16,10 +16,20 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    # Reduced from 10 to avoid flooding CI with low-value update PRs.
+    open-pull-requests-limit: 5
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    # Reduced from 10; minor/patch bumps are grouped into a single PR.
+    open-pull-requests-limit: 5
+    groups:
+      # Group all minor/patch action updates into one PR to halve CI load from bot PRs.
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
