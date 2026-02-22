@@ -1,17 +1,28 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Project {{ project_id }}</h1>
-<p><a href="/diff/{{ project_id }}">Diff View</a></p>
-<ul>
-{% for r in revisions %}
-<li><a href="/projects/{{ project_id }}?revision_id={{ r.revision_id }}">{{ r.revision_id }} ({{ r.created_at }})</a></li>
-{% endfor %}
-</ul>
+<div class="card">
+	<h1>Project {{ project_id }}</h1>
+	<p><a href="/diff/{{ project_id }}">Diff View</a></p>
+</div>
+
+<div class="card">
+	<h2>Revisions</h2>
+	<ul>
+	{% for r in revisions %}
+	<li><a href="/projects/{{ project_id }}?revision_id={{ r.revision_id }}">{{ r.revision_id }} ({{ r.created_at }})</a></li>
+	{% endfor %}
+	</ul>
+</div>
+
 {% if chosen %}
-<h2>Revision {{ chosen.revision_id }}</h2>
-<a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">Export sessions.csv</a>
-<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
-<a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
-<p>Sessions: {{ result.metrics.session_count }}</p>
+<div class="card">
+	<h2>Revision {{ chosen.revision_id }}</h2>
+	<div class="actions">
+		<a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">Export sessions.csv</a>
+		<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
+		<a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
+	</div>
+	<p>Sessions: {{ result.metrics.session_count }}</p>
+</div>
 {% endif %}
 {% endblock %}

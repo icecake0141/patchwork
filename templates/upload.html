@@ -1,14 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Upload project.yaml</h1>
-<form method="post" enctype="multipart/form-data">
-  <input type="file" name="project_yaml" accept=".yaml,.yml" required>
-  <button type="submit">Run Trial</button>
-</form>
-<h2>Projects</h2>
-<ul>
-{% for p in projects %}
-  <li><a href="/projects/{{ p.project_id }}">{{ p.name }}</a></li>
-{% endfor %}
-</ul>
+<div class="card">
+  <h1>Upload project.yaml</h1>
+  <p class="muted">Upload a YAML definition and run trial allocation.</p>
+  <form method="post" enctype="multipart/form-data">
+    <input type="file" name="project_yaml" accept=".yaml,.yml" required>
+    <button type="submit">Run Trial</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Projects</h2>
+  <ul>
+  {% for p in projects %}
+    <li><a href="/projects/{{ p.project_id }}">{{ p.name }}</a></li>
+  {% endfor %}
+  </ul>
+</div>
 {% endblock %}
