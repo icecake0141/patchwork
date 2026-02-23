@@ -102,6 +102,40 @@ def test_utp_tail_sharing_acceptance() -> None:
     assert r03_ports == [(1, 2, 2), (1, 2, 3)]
 
 
+def test_utp_tail_module_exact_fill_acceptance() -> None:
+    payload = _base()
+    payload["demands"] = [
+        {"id": "D1", "src": "R01", "dst": "R02", "endpoint_type": "utp_rj45", "count": 4},
+        {"id": "D2", "src": "R01", "dst": "R03", "endpoint_type": "utp_rj45", "count": 2},
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+
+    r01_utp = [
+        m for m in result["modules"] if m["rack_id"] == "R01" and m["module_type"] == "utp_6xrj45"
+    ]
+    assert len(r01_utp) == 1
+
+    sessions = [
+        s for s in result["sessions"] if s["media"] == "utp_rj45" and s["src_rack"] == "R01"
+    ]
+    r02_ports = sorted(
+        s["src_port"]
+        for s in sessions
+        if s["src_u"] == r01_utp[0]["panel_u"]
+        and s["src_slot"] == r01_utp[0]["slot"]
+        and s["dst_rack"] == "R02"
+    )
+    r03_ports = sorted(
+        s["src_port"]
+        for s in sessions
+        if s["src_u"] == r01_utp[0]["panel_u"]
+        and s["src_slot"] == r01_utp[0]["slot"]
+        and s["dst_rack"] == "R03"
+    )
+    assert r02_ports == [1, 2, 3, 4]
+    assert r03_ports == [5, 6]
+
+
 def test_mixed_in_u_behavior_acceptance() -> None:
     payload = _base()
     payload["demands"] = [
