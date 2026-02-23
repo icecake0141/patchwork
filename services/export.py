@@ -491,9 +491,11 @@ def integrated_wiring_svg(
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", "") for c in result.get("cables", [])}
     slot_used_ports: dict[tuple[str, int, int], set[int]] = defaultdict(set)
     module_capacity_by_slot: dict[tuple[str, int, int], int] = {
-        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): SLOT_PORT_CAPACITY.get(
-            str(module.get("module_type", "")), 0
-        )
+        (
+            str(module["rack_id"]),
+            int(module["panel_u"]),
+            int(module["slot"]),
+        ): SLOT_PORT_CAPACITY.get(str(module.get("module_type", "")), 0)
         for module in result.get("modules", [])
     }
     module_type_by_slot: dict[tuple[str, int, int], str] = {
@@ -503,7 +505,11 @@ def integrated_wiring_svg(
         for module in result.get("modules", [])
     }
     module_layout_by_slot: dict[tuple[str, int, int], dict[str, Any]] = {
-        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): _module_layout_profile(
+        (
+            str(module["rack_id"]),
+            int(module["panel_u"]),
+            int(module["slot"]),
+        ): _module_layout_profile(
             str(module.get("module_type", "")),
             str(module.get("fiber_kind")) if module.get("fiber_kind") else None,
         )
@@ -740,7 +746,9 @@ def integrated_wiring_svg(
             front_anchor_w = 14.0
             front_anchor_h = 8.0
             front_inner_edge_x = (
-                front_x + (front_anchor_w / 2.0) if front_x < rear_x else front_x - (front_anchor_w / 2.0)
+                front_x + (front_anchor_w / 2.0)
+                if front_x < rear_x
+                else front_x - (front_anchor_w / 2.0)
             )
 
             port_row_y = {
@@ -763,8 +771,8 @@ def integrated_wiring_svg(
                         continue
                     group_state = "occupied" if mpo_index in active_mpo_groups else "free"
                     group_opacity = "0.95" if group_state == "occupied" else "0.30"
-                    anchor_y = (
-                        sum((port_row_y[int(port)] - 3.0) for port in group_ports) / len(group_ports)
+                    anchor_y = sum((port_row_y[int(port)] - 3.0) for port in group_ports) / len(
+                        group_ports
                     )
                     mpo_group_anchor_y[mpo_index] = anchor_y
                     mpo_inner_edge_x = (
@@ -802,10 +810,14 @@ def integrated_wiring_svg(
             else:
                 rear_anchor_w = 14.0
                 rear_inner_edge_x = (
-                    rear_x - (rear_anchor_w / 2.0) if rear_x > front_x else rear_x + (rear_anchor_w / 2.0)
+                    rear_x - (rear_anchor_w / 2.0)
+                    if rear_x > front_x
+                    else rear_x + (rear_anchor_w / 2.0)
                 )
                 rear_outer_edge_x = (
-                    rear_x + (rear_anchor_w / 2.0) if rear_x > front_x else rear_x - (rear_anchor_w / 2.0)
+                    rear_x + (rear_anchor_w / 2.0)
+                    if rear_x > front_x
+                    else rear_x - (rear_anchor_w / 2.0)
                 )
                 for port in ordered_ports:
                     port_key = int(port)
@@ -843,9 +855,14 @@ def integrated_wiring_svg(
                     )
 
                 rear_target_y = (
-                    mpo_group_anchor_y[1] if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and int(port) <= 6
-                    else mpo_group_anchor_y[2] if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and 7 <= int(port) <= 12
-                    else anchor_y
+                    mpo_group_anchor_y[1]
+                    if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and int(port) <= 6
+                    else (
+                        mpo_group_anchor_y[2]
+                        if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex"
+                        and 7 <= int(port) <= 12
+                        else anchor_y
+                    )
                 )
                 node_lines.append(
                     f'<line x1="{front_inner_edge_x}" y1="{anchor_y}" x2="{rear_inner_edge_x}" y2="{rear_target_y}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
@@ -1001,8 +1018,12 @@ def integrated_wiring_svg(
                 dst_rear_dx = 32 if rack_side[dst_rack] == "left" else -32
                 dst_rear_x = x2 + dst_rear_dx
 
-            src_anchor = slot_anchor_positions.get((src_rack, src_u, src_slot, int(row["src_port"])))
-            dst_anchor = slot_anchor_positions.get((dst_rack, dst_u, dst_slot, int(row["dst_port"])))
+            src_anchor = slot_anchor_positions.get(
+                (src_rack, src_u, src_slot, int(row["src_port"]))
+            )
+            dst_anchor = slot_anchor_positions.get(
+                (dst_rack, dst_u, dst_slot, int(row["dst_port"]))
+            )
             if src_anchor is not None:
                 src_rear_x, y1 = src_anchor
             if dst_anchor is not None:
@@ -1463,9 +1484,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
             '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" checked="checked" />free</label>',
         ]
     )
-    anchor_label_controls = (
-        '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-anchor-label-toggle" checked="checked" />show P# in anchor box</label>'
-    )
+    anchor_label_controls = '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-anchor-label-toggle" checked="checked" />show P# in anchor box</label>'
     legend_items = "".join(
         f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{MEDIA_COLORS.get(media, "#334155")};"></span>{escape(media)}</span>'
         for media in media_types
@@ -1565,7 +1584,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "el.style.display=showAnchorLabels&&rackVisible&&stateVisible?'':'none';"
         "});"
         "};"
-        "svg.querySelectorAll('input[data-role=\"integrated-media\"],input[data-role=\"integrated-rack\"],input[data-role=\"integrated-port-state\"],input[data-role=\"integrated-anchor-label-toggle\"]').forEach((el)=>el.addEventListener('change',apply));"
+        'svg.querySelectorAll(\'input[data-role="integrated-media"],input[data-role="integrated-rack"],input[data-role="integrated-port-state"],input[data-role="integrated-anchor-label-toggle"]\').forEach((el)=>el.addEventListener(\'change\',apply));'
         "svg.addEventListener('click',(event)=>{"
         "const target=event.target.closest('.integrated-filterable');"
         "if(!target){highlightedWireId='';apply();return;}"

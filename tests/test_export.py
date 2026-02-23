@@ -657,8 +657,14 @@ def test_integrated_wiring_svg_route_modes_are_rendered() -> None:
     }
     assert len(highway_lane_y) >= 2
 
-    direct_r02 = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"', svg_direct)
-    stagger_r02 = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"', svg_stagger)
+    direct_r02 = re.search(
+        r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"',
+        svg_direct,
+    )
+    stagger_r02 = re.search(
+        r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"',
+        svg_stagger,
+    )
     assert direct_r02 is not None
     assert stagger_r02 is not None
     assert float(stagger_r02.group(2)) - float(direct_r02.group(2)) >= 100.0
