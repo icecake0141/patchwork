@@ -162,7 +162,9 @@ def wiring_svg(result: dict[str, Any]) -> str:
 
         src_group_label = escape(f"{src_rack} U{src_u}S{src_slot}")
         dst_group_label = escape(f"{dst_rack} U{dst_u}S{dst_slot}")
-        group_title = escape(f"{media} ({len(sessions)} connection{'s' if len(sessions) != 1 else ''})")
+        group_title = escape(
+            f"{media} ({len(sessions)} connection{'s' if len(sessions) != 1 else ''})"
+        )
 
         lines.append(
             f'<rect x="18" y="{y - 16}" width="1244" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
@@ -215,8 +217,8 @@ def integrated_wiring_svg(
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", "") for c in result.get("cables", [])}
     slot_used_ports: dict[tuple[str, int, int], set[int]] = defaultdict(set)
 
-    grouped_sessions: dict[tuple[str, int, int, str, int, int, str], list[dict[str, Any]]] = defaultdict(
-        list
+    grouped_sessions: dict[tuple[str, int, int, str, int, int, str], list[dict[str, Any]]] = (
+        defaultdict(list)
     )
     for session in result.get("sessions", []):
         if session.get("media") not in selected_media:
@@ -385,9 +387,7 @@ def integrated_wiring_svg(
         if total == 0:
             continue
 
-        group_id = escape(
-            f"{src_rack}_{src_u}_{src_slot}__{dst_rack}_{dst_u}_{dst_slot}__{media}"
-        )
+        group_id = escape(f"{src_rack}_{src_u}_{src_slot}__{dst_rack}_{dst_u}_{dst_slot}__{media}")
         for index, row in enumerate(rows):
             lane_offset = (index - (total - 1) / 2) * 8.0
             x1, y1 = src_pos
@@ -501,7 +501,9 @@ def _tag_name(xml_tag: str) -> str:
     return xml_tag
 
 
-def _parse_svg_path_cubic(path_d: str) -> tuple[float, float, float, float, float, float, float, float] | None:
+def _parse_svg_path_cubic(
+    path_d: str,
+) -> tuple[float, float, float, float, float, float, float, float] | None:
     """Parse a simple SVG cubic path: M x1 y1 C c1x c1y, c2x c2y, x2 y2."""
     tokens = re.findall(r"[A-Za-z]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", path_d)
     if len(tokens) < 10:
@@ -549,7 +551,9 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 "shape=rectangle;whiteSpace=wrap;html=1;rounded=0;"
                 f"fillColor={fill};strokeColor={stroke};"
             )
-            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">')
+            lines.append(
+                f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">'
+            )
             lines.append(
                 f'<mxGeometry x="{x:.2f}" y="{y:.2f}" width="{rect_w:.2f}" height="{rect_h:.2f}" as="geometry"/>'
             )
@@ -569,7 +573,9 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
                 "endArrow=none;startArrow=none;"
             )
-            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">')
+            lines.append(
+                f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
+            )
             lines.append('<mxGeometry relative="1" as="geometry">')
             lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
             lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
@@ -591,11 +597,13 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
                 "endArrow=none;startArrow=none;"
             )
-            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">')
+            lines.append(
+                f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
+            )
             lines.append('<mxGeometry relative="1" as="geometry">')
             lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
             lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
-            lines.append("<Array as=\"points\">")
+            lines.append('<Array as="points">')
             lines.append(f'<mxPoint x="{c1x:.2f}" y="{c1y:.2f}"/>')
             lines.append(f'<mxPoint x="{c2x:.2f}" y="{c2y:.2f}"/>')
             lines.append("</Array>")
@@ -639,17 +647,21 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             stroke = element.get("stroke", "none")
             d = radius * 2
             style = f"shape=ellipse;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
-            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">')
+            lines.append(
+                f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">'
+            )
             lines.append(
                 f'<mxGeometry x="{cx - radius:.2f}" y="{cy - radius:.2f}" width="{d:.2f}" height="{d:.2f}" as="geometry"/>'
             )
             lines.append("</mxCell>")
             next_id += 1
 
-    lines.extend([
-        "</root>",
-        "</mxGraphModel>",
-    ])
+    lines.extend(
+        [
+            "</root>",
+            "</mxGraphModel>",
+        ]
+    )
     return "".join(lines)
 
 
@@ -674,7 +686,9 @@ def svgs_to_drawio(pages: list[tuple[str, str]]) -> str:
     for index, (page_name, svg_text) in enumerate(pages, start=1):
         page_name_escaped = escape(page_name, quote=True)
         graph_model = _svg_to_mx_graph_model(svg_text)
-        diagrams.append(f'<diagram id="page_{index}" name="{page_name_escaped}">{graph_model}</diagram>')
+        diagrams.append(
+            f'<diagram id="page_{index}" name="{page_name_escaped}">{graph_model}</diagram>'
+        )
 
     return (
         '<mxfile host="app.diagrams.net" modified="2026-02-23T00:00:00Z" agent="patchwork" version="22.1.0">'
@@ -718,7 +732,9 @@ def rack_occupancy_drawio(result: dict[str, Any]) -> str:
 
     gap = 40.0
     margin = 20.0
-    total_width = margin * 2 + sum(width for width, _ in rack_sizes) + gap * max(0, len(rack_sizes) - 1)
+    total_width = (
+        margin * 2 + sum(width for width, _ in rack_sizes) + gap * max(0, len(rack_sizes) - 1)
+    )
     total_height = margin * 2 + max((height for _, height in rack_sizes), default=200.0)
 
     chunks = [
@@ -730,7 +746,9 @@ def rack_occupancy_drawio(result: dict[str, Any]) -> str:
     for svg_text, (rack_w, _rack_h) in zip(rack_svgs, rack_sizes, strict=False):
         start_index = svg_text.find(">")
         end_index = svg_text.rfind("</svg>")
-        inner = svg_text[start_index + 1 : end_index] if start_index != -1 and end_index != -1 else ""
+        inner = (
+            svg_text[start_index + 1 : end_index] if start_index != -1 and end_index != -1 else ""
+        )
         chunks.append(f'<g transform="translate({cursor_x:.1f},{margin:.1f})">{inner}</g>')
         cursor_x += rack_w + gap
 
