@@ -70,6 +70,10 @@ pip install -e ".[dev]"
 3. Upload a `project.yaml` file (see `examples/quick-start/sample-project.yaml`).
 4. Download exported results (`result.json`, `sessions.csv`, `bom.csv`) from the UI.
 
+Operational notes:
+- Upload size limit is 1 MiB per request (`MAX_CONTENT_LENGTH`).
+- Set `SECRET_KEY` in production; otherwise the app uses `dev-secret` fallback.
+
 ### Input format — `project.yaml`
 
 A `project.yaml` file has four sections: `project` (metadata), `racks`, `demands`, and
@@ -146,6 +150,19 @@ settings:
 
 See `examples/quick-start/README.md` for the full field reference.
 
+Validation constraints:
+- Unknown keys are rejected (`extra="forbid"`) across input models.
+- Rack IDs and demand IDs must each be unique.
+- `src` and `dst` in a demand must be different and must reference existing racks.
+- Unsupported values are rejected for `endpoint_type`, `ordering.peer_sort`,
+  `ordering.slot_category_priority`, and `panel.allocation_direction`.
+
+Fixed profile behavior:
+- `settings.fixed_profiles.lc_demands.trunk_polarity` and
+  `settings.fixed_profiles.mpo_e2e.trunk_polarity` are reflected to cable `polarity_type`.
+- `settings.fixed_profiles.lc_demands.breakout_module_variant` and
+  `settings.fixed_profiles.mpo_e2e.pass_through_variant` are reflected to module `polarity_variant`.
+
 ### Output files
 
 After allocation Patchwork produces three downloadable files:
@@ -197,6 +214,14 @@ cable,utp_cable,8
 ```
 
 See `examples/quick-start/README.md` for the complete field reference.
+
+Revision and diff semantics:
+- `project_id` is deterministic from project name hash (`prj_<sha256(name)[:16]>`).
+- `revision_id` is generated from project name + timestamp + input YAML
+  (`rev_<sha256(name+time+yaml)[:16]>`).
+- Logical diff compares `session_id` and classifies `added`, `removed`, `modified`.
+- Physical diff compares `(media, src_face/rack/u/slot/port, dst_face/rack/u/slot/port)`
+  and reports `added`, `removed`, `collisions`.
 
 ### HTML/UI notes
 The Web UI uses HTML templates under `templates/` and static assets under `static/`. You
@@ -275,6 +300,10 @@ pip install -e ".[dev]"
    （`examples/quick-start/sample-project.yaml` を参照）。
 4. 結果（`result.json`, `sessions.csv`, `bom.csv`）を UI からダウンロードします。
 
+運用メモ:
+- 1 リクエストあたりのアップロード上限は 1 MiB（`MAX_CONTENT_LENGTH`）です。
+- 本番運用では `SECRET_KEY` を設定してください。未設定時は `dev-secret` が使われます。
+
 ### 入力形式 — `project.yaml`
 
 `project.yaml` は `project`（メタ情報）、`racks`、`demands`、任意の `settings` の
@@ -330,6 +359,19 @@ demands:
 `u_label_mode` は UI 上の U 表示ラベルだけを切り替えます。割り当て動作自体は
 `allocation_direction` で制御されます。
 
+バリデーション制約:
+- 入力モデル全体で未定義キーは拒否されます（`extra="forbid"`）。
+- rack ID と demand ID はそれぞれ一意である必要があります。
+- demand の `src` と `dst` は同一不可で、既存ラックを参照する必要があります。
+- `endpoint_type` / `ordering.peer_sort` / `ordering.slot_category_priority` /
+  `panel.allocation_direction` の未対応値は拒否されます。
+
+固定プロファイルの反映:
+- `settings.fixed_profiles.lc_demands.trunk_polarity` と
+  `settings.fixed_profiles.mpo_e2e.trunk_polarity` は cable の `polarity_type` に反映されます。
+- `settings.fixed_profiles.lc_demands.breakout_module_variant` と
+  `settings.fixed_profiles.mpo_e2e.pass_through_variant` は module の `polarity_variant` に反映されます。
+
 ### 出力ファイル
 
 割り当て完了後、3 つのファイルをダウンロードできます。
@@ -380,6 +422,14 @@ cable,utp_cable,8
 ```
 
 各フィールドの詳細は `examples/quick-start/README.md` を参照してください。
+
+リビジョンと差分判定ルール:
+- `project_id` は project 名ハッシュから決定的に生成されます（`prj_<sha256(name)[:16]>`）。
+- `revision_id` は project 名 + 時刻 + 入力 YAML から生成されます
+  （`rev_<sha256(name+time+yaml)[:16]>`）。
+- Logical diff は `session_id` を比較し、`added` / `removed` / `modified` を分類します。
+- Physical diff は `(media, src_face/rack/u/slot/port, dst_face/rack/u/slot/port)` を比較し、
+  `added` / `removed` / `collisions` を分類します。
 
 ### HTML/UI について
 Web UI は `templates/` の HTML テンプレートと `static/` のアセットを利用します。

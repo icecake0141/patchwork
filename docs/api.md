@@ -47,6 +47,39 @@ This document describes the interfaces and allocation behavior implemented in th
 - `GET /pair-svg/<revision_id>/<rack_a>/<rack_b>`
   - Returns pair detail SVG for one rack pair.
 
+## Runtime / Request Constraints
+
+- Maximum upload payload is 1 MiB (`MAX_CONTENT_LENGTH = 1024 * 1024`).
+- Session secret key is read from `SECRET_KEY`; default fallback is `dev-secret`.
+
+## Input Validation Rules (ProjectInput)
+
+- Unknown keys are rejected (`extra="forbid"`) for all nested models.
+- `racks[].id` must be unique.
+- `demands[].id` must be unique.
+- `demands[].src` and `demands[].dst` must be different.
+- Every demand must reference existing rack IDs.
+- `count` must be greater than 0.
+- Unsupported endpoint types / ordering categories / sort strategies / allocation directions are rejected.
+
+## Revision Persistence Rules
+
+- `project_id` is deterministic from project name: `prj_<sha256(name)[:16]>`.
+- `revision_id` includes timestamp + input YAML hash seed: `rev_<sha256(name+time+yaml)[:16]>`.
+- At DB persistence, IDs for panel/module/cable/session are namespaced with revision prefix (`<revision_id>:<id>`).
+- In saved sessions, `cable_id` is rewritten to the persisted cable DB ID for referential consistency.
+
+## Diff Semantics
+
+- Logical diff compares by `session_id`:
+  - `added`: IDs only in newer revision
+  - `removed`: IDs only in older revision
+  - `modified`: same `session_id` but row payload changed
+- Physical diff compares by physical tuple key:
+  - `(media, src_rack, src_face, src_u, src_slot, src_port, dst_rack, dst_face, dst_u, dst_slot, dst_port)`
+  - `added`/`removed` by tuple existence
+  - `collisions` when same physical tuple exists in both revisions but maps to different `session_id`
+
 ## Python Allocation API
 
 - `services.allocator.allocate(project: ProjectInput) -> dict[str, Any]`
@@ -173,6 +206,39 @@ See `examples/quick-start` for end-to-end examples.
 
 - `GET /pair-svg/<revision_id>/<rack_a>/<rack_b>`
   - 指定ラックペアの詳細 SVG を返します。
+
+### 実行時 / リクエスト制約
+
+- アップロード上限は 1 MiB（`MAX_CONTENT_LENGTH = 1024 * 1024`）です。
+- セッション秘密鍵は `SECRET_KEY` から読み取り、未設定時は `dev-secret` を使用します。
+
+### 入力バリデーション規則（ProjectInput）
+
+- すべてのネストモデルで未定義キーを拒否します（`extra="forbid"`）。
+- `racks[].id` は一意である必要があります。
+- `demands[].id` は一意である必要があります。
+- `demands[].src` と `demands[].dst` は同一不可です。
+- 各 demand は既存ラック ID を参照している必要があります。
+- `count` は 0 より大きい必要があります。
+- 未対応の endpoint_type / ordering category / sort strategy / allocation_direction は拒否されます。
+
+### リビジョン永続化ルール
+
+- `project_id` は project 名から決定的に生成します: `prj_<sha256(name)[:16]>`。
+- `revision_id` は時刻 + 入力 YAML を種に生成します: `rev_<sha256(name+time+yaml)[:16]>`。
+- DB 保存時、panel/module/cable/session の ID は `<revision_id>:<id>` 形式で名前空間化されます。
+- 保存済み session の `cable_id` は、参照整合性のため永続化後の cable DB ID に置き換えます。
+
+### Diff 判定ルール
+
+- Logical diff は `session_id` 基準で比較:
+  - `added`: 新しいリビジョンのみに存在
+  - `removed`: 古いリビジョンのみに存在
+  - `modified`: `session_id` は同じだが内容が変更
+- Physical diff は物理タプル基準で比較:
+  - `(media, src_rack, src_face, src_u, src_slot, src_port, dst_rack, dst_face, dst_u, dst_slot, dst_port)`
+  - `added` / `removed`: タプルの有無で判定
+  - `collisions`: 同一タプルが両リビジョンに存在し、`session_id` が異なる場合
 
 ### Python 割り当て API
 
