@@ -293,7 +293,7 @@ def integrated_wiring_svg(
         '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Integrated Wiring View</text>',
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>',
         '<text x="20" y="72" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>',
-        '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="92" width="100%" height="100%"/></clipPath></defs>',
+        '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="84" width="100%" height="100%"/></clipPath></defs>',
         '<g data-role="viewport" clip-path="url(#integrated-viewport-clip)">',
     ]
 
@@ -411,6 +411,13 @@ def integrated_wiring_svg(
                 mid_y = (y1 + y2) / 2 + lane_offset - 4 + ((index % 3) - 1) * 9
                 lines.append(
                     f'<text x="{mid_x}" y="{mid_y}" font-size="10" font-family="Arial, sans-serif" fill="#1f2937" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
+                )
+            else:
+                port_text = escape(str(row["port_text"]))
+                mid_x = (src_snap_x + dst_snap_x) / 2 + (8 if index % 2 else -8)
+                mid_y = (y1 + y2) / 2 + lane_offset - 3 + ((index % 3) - 1) * 7
+                lines.append(
+                    f'<text x="{mid_x}" y="{mid_y}" font-size="9" font-family="Arial, sans-serif" fill="#334155" opacity="0.62" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
                 )
 
     for (rack_id, u_value, slot_value), (x, y) in sorted(node_positions.items()):

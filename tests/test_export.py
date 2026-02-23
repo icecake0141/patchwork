@@ -194,4 +194,5 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert detailed_svg.count(">P1</text>") >= 2
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
+    assert "P1→P1" in detailed_svg
     assert "P1→P1" in aggregate_svg
