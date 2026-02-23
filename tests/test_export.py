@@ -414,8 +414,16 @@ def test_rack_panel_svg_supports_uniform_slot_width_across_racks() -> None:
     result = allocate(project)
 
     uniform_slot_width = rack_slot_width(result)
+    rack_max_slot_width = max(
+        rack_slot_width(result, "R1"),
+        rack_slot_width(result, "R2"),
+        rack_slot_width(result, "R3"),
+    )
     svg_r1 = render_rack_panels_svg(result, "R1", slot_width=uniform_slot_width)
+    svg_r2 = render_rack_panels_svg(result, "R2", slot_width=uniform_slot_width)
     svg_r3 = render_rack_panels_svg(result, "R3", slot_width=uniform_slot_width)
 
+    assert uniform_slot_width == rack_max_slot_width
     assert f'width="{uniform_slot_width}"' in svg_r1
+    assert f'width="{uniform_slot_width}"' in svg_r2
     assert f'width="{uniform_slot_width}"' in svg_r3

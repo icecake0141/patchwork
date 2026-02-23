@@ -27,12 +27,13 @@ MODULE_COLORS = {
 def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
     panels = [p for p in result["panels"] if rack_id is None or p["rack_id"] == rack_id]
     modules = [m for m in result["modules"] if rack_id is None or m["rack_id"] == rack_id]
-    by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
+    by_rack_uslot = {(m["rack_id"], m["panel_u"], m["slot"]): m for m in modules}
 
     max_label_chars = len("S1: empty")
     for panel in panels:
+        panel_rack = panel["rack_id"]
         for slot in range(1, panel["slots_per_u"] + 1):
-            mod = by_uslot.get((panel["u"], slot))
+            mod = by_rack_uslot.get((panel_rack, panel["u"], slot))
             module_type = mod["module_type"] if mod else "empty"
             label = MODULE_LABELS.get(module_type, module_type)
             max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
