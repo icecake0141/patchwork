@@ -393,6 +393,22 @@ def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> Non
     assert drawio.count("<diagram ") >= 2
     assert "curved=1;" in drawio
     assert "jumpStyle=arc;" in drawio
+    assert "Front" in drawio
+    assert "Rear" in drawio
+    assert "occ 1/12" in drawio
+
+
+def test_svg_to_drawio_preserves_opacity_style() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="90">'
+        '<path d="M 10 40 C 40 10, 80 70, 120 40" stroke="#2563eb" stroke-width="2" opacity="0.85" fill="none"/>'
+        '<text x="130" y="40" font-size="12" opacity="0.62">Label</text>'
+        "</svg>"
+    )
+    drawio = svg_to_drawio(svg, page_name="Opacity")
+
+    assert "opacity=85;" in drawio
+    assert "opacity=62;" in drawio
 
 
 def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:

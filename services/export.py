@@ -794,6 +794,20 @@ def _parse_translate(transform: str | None) -> tuple[float, float]:
     return (tx, ty)
 
 
+def _svg_opacity_to_drawio(value: str | None) -> int | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        opacity = float(text)
+    except ValueError:
+        return None
+    clamped = max(0.0, min(1.0, opacity))
+    return int(round(clamped * 100.0))
+
+
 def _svg_to_mx_graph_model(svg_text: str) -> str:
     root = ET.fromstring(svg_text)
     width = _svg_length_to_float(root.get("width"), 1280.0)
@@ -822,10 +836,13 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             rect_h = _svg_length_to_float(element.get("height"), 0.0)
             fill = element.get("fill", "none")
             stroke = element.get("stroke", "none")
+            opacity = _svg_opacity_to_drawio(element.get("opacity"))
             style = (
                 "shape=rectangle;whiteSpace=wrap;html=1;rounded=0;"
                 f"fillColor={fill};strokeColor={stroke};"
             )
+            if opacity is not None:
+                style += f"opacity={opacity};"
             lines.append(
                 f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">'
             )
@@ -842,11 +859,14 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             y2 = _svg_length_to_float(element.get("y2"), 0.0) + ty
             stroke = element.get("stroke", "#1f2937")
             stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
+            opacity = _svg_opacity_to_drawio(element.get("opacity"))
             style = (
                 "edgeStyle=none;html=1;rounded=0;"
                 f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
                 "endArrow=none;startArrow=none;jumpStyle=arc;jumpSize=6;"
             )
+            if opacity is not None:
+                style += f"opacity={opacity};"
             lines.append(
                 f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
             )
@@ -872,11 +892,14 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 y2 += ty
                 stroke = element.get("stroke", "#1f2937")
                 stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
+                opacity = _svg_opacity_to_drawio(element.get("opacity"))
                 style = (
                     "edgeStyle=none;curved=1;html=1;rounded=0;"
                     f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
                     "endArrow=none;startArrow=none;jumpStyle=arc;jumpSize=6;"
                 )
+                if opacity is not None:
+                    style += f"opacity={opacity};"
                 lines.append(
                     f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
                 )
@@ -901,12 +924,15 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 font_family = element.get("font-family", "Arial")
                 weight = element.get("font-weight", "normal")
                 font_style = "1" if str(weight).lower() == "bold" else "0"
+                opacity = _svg_opacity_to_drawio(element.get("opacity"))
                 text_w = max(40.0, len(text_value) * font_size * 0.62)
                 text_h = max(14.0, font_size * 1.35)
                 style = (
                     "text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;"
                     f"fontSize={font_size:.0f};fontColor={fill};fontFamily={font_family};fontStyle={font_style};"
                 )
+                if opacity is not None:
+                    style += f"opacity={opacity};"
                 lines.append(
                     f'<mxCell id="{next_id}" value="{escape(text_value, quote=True)}" style="{escape(style, quote=True)}" vertex="1" parent="1">'
                 )
@@ -922,8 +948,11 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             radius = _svg_length_to_float(element.get("r"), 0.0)
             fill = element.get("fill", "none")
             stroke = element.get("stroke", "none")
+            opacity = _svg_opacity_to_drawio(element.get("opacity"))
             d = radius * 2
             style = f"shape=ellipse;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
+            if opacity is not None:
+                style += f"opacity={opacity};"
             lines.append(
                 f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">'
             )
