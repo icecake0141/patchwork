@@ -63,7 +63,9 @@ def _save_and_get_revision_and_project(client, project_name: str) -> tuple[str, 
         ("examples/quick-start/sample-project-10rack-200links.yaml", "high-density"),
     ],
 )
-def test_acceptance_smoke_ui_and_exports_by_scenario(yaml_rel_path: str, scenario_name: str) -> None:
+def test_acceptance_smoke_ui_and_exports_by_scenario(
+    yaml_rel_path: str, scenario_name: str
+) -> None:
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     try:
@@ -75,7 +77,10 @@ def test_acceptance_smoke_ui_and_exports_by_scenario(yaml_rel_path: str, scenari
         trial_response = client.get("/trial")
         assert trial_response.status_code == 200
         assert b"Integrated Wiring View" in trial_response.data
-        assert b"Tip: click wire/label to focus. Click again or blank area to clear." in trial_response.data
+        assert (
+            b"Tip: click wire/label to focus. Click again or blank area to clear."
+            in trial_response.data
+        )
         assert b"Gap Jump Scale" in trial_response.data
         assert b"Auto \xc3\x97 0.50" in trial_response.data
         assert b"Auto \xc3\x97 2.00" in trial_response.data
