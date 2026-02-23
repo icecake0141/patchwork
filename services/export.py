@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 import re
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
@@ -52,6 +53,140 @@ MEDIA_COLORS = {
     "mpo12": "#7c3aed",
     "utp_rj45": "#ea580c",
 }
+
+
+def _cubic_point(
+    curve: tuple[float, float, float, float, float, float, float, float], t: float
+) -> tuple[float, float]:
+    x1, y1, c1x, c1y, c2x, c2y, x2, y2 = curve
+    mt = 1.0 - t
+    x = (mt**3) * x1 + 3.0 * (mt**2) * t * c1x + 3.0 * mt * (t**2) * c2x + (t**3) * x2
+    y = (mt**3) * y1 + 3.0 * (mt**2) * t * c1y + 3.0 * mt * (t**2) * c2y + (t**3) * y2
+    return (x, y)
+
+
+def _sample_cubic(
+    curve: tuple[float, float, float, float, float, float, float, float],
+    steps: int = 28,
+) -> list[tuple[float, float]]:
+    return [_cubic_point(curve, i / steps) for i in range(steps + 1)]
+
+
+def _segment_intersection(
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    p3: tuple[float, float],
+    p4: tuple[float, float],
+) -> tuple[float, float, float, float] | None:
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    x4, y4 = p4
+
+    dx12 = x2 - x1
+    dy12 = y2 - y1
+    dx34 = x4 - x3
+    dy34 = y4 - y3
+    denom = dx12 * dy34 - dy12 * dx34
+    if abs(denom) < 1e-9:
+        return None
+
+    dx13 = x3 - x1
+    dy13 = y3 - y1
+    ua = (dx13 * dy34 - dy13 * dx34) / denom
+    ub = (dx13 * dy12 - dy13 * dx12) / denom
+    eps = 1e-6
+    if not (-eps <= ua <= 1.0 + eps and -eps <= ub <= 1.0 + eps):
+        return None
+
+    ix = x1 + ua * dx12
+    iy = y1 + ua * dy12
+    return (ix, iy, ua, ub)
+
+
+def _integrated_wire_gap_overlays(wire_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(wire_entries) < 2:
+        return []
+
+    sampled: list[dict[str, Any]] = []
+    for entry in wire_entries:
+        points = _sample_cubic(entry["curve"])
+        segments = [
+            {
+                "p1": points[idx],
+                "p2": points[idx + 1],
+                "idx": idx,
+                "count": len(points) - 1,
+            }
+            for idx in range(len(points) - 1)
+        ]
+        sampled.append({"entry": entry, "segments": segments})
+
+    overlays: list[dict[str, Any]] = []
+    for under_index in range(len(sampled) - 1):
+        under = sampled[under_index]
+        for over_index in range(under_index + 1, len(sampled)):
+            over = sampled[over_index]
+
+            if under["entry"]["group"] == over["entry"]["group"]:
+                continue
+
+            for under_seg in under["segments"]:
+                ux1, uy1 = under_seg["p1"]
+                ux2, uy2 = under_seg["p2"]
+                umin_x, umax_x = min(ux1, ux2), max(ux1, ux2)
+                umin_y, umax_y = min(uy1, uy2), max(uy1, uy2)
+
+                for over_seg in over["segments"]:
+                    ox1, oy1 = over_seg["p1"]
+                    ox2, oy2 = over_seg["p2"]
+                    omin_x, omax_x = min(ox1, ox2), max(ox1, ox2)
+                    omin_y, omax_y = min(oy1, oy2), max(oy1, oy2)
+                    if umax_x < omin_x or omax_x < umin_x or umax_y < omin_y or omax_y < umin_y:
+                        continue
+
+                    intersection = _segment_intersection(
+                        under_seg["p1"], under_seg["p2"], over_seg["p1"], over_seg["p2"]
+                    )
+                    if intersection is None:
+                        continue
+
+                    ix, iy, ua, ub = intersection
+                    under_t = (under_seg["idx"] + ua) / max(1, under_seg["count"])
+                    over_t = (over_seg["idx"] + ub) / max(1, over_seg["count"])
+                    if under_t < 0.06 or under_t > 0.94 or over_t < 0.06 or over_t > 0.94:
+                        continue
+
+                    odx = ox2 - ox1
+                    ody = oy2 - oy1
+                    over_len = math.hypot(odx, ody)
+                    if over_len < 1e-6:
+                        continue
+
+                    overlays.append(
+                        {
+                            "x": ix,
+                            "y": iy,
+                            "under": under["entry"],
+                            "over": over["entry"],
+                            "dx": odx / over_len,
+                            "dy": ody / over_len,
+                        }
+                    )
+
+    deduped: list[dict[str, Any]] = []
+    for overlay in sorted(overlays, key=lambda o: (o["over"]["order"], o["x"], o["y"])):
+        found_near = False
+        for existing in deduped:
+            if existing["over"]["order"] != overlay["over"]["order"]:
+                continue
+            if math.hypot(existing["x"] - overlay["x"], existing["y"] - overlay["y"]) < 6.0:
+                found_near = True
+                break
+        if not found_near:
+            deduped.append(overlay)
+
+    return deduped
 
 
 def sessions_csv(result: dict[str, Any], project_id: str, revision_id: str | None = None) -> str:
@@ -332,6 +467,10 @@ def integrated_wiring_svg(
                 f'<text x="{x - 70}" y="{panel_y + 16}" font-size="11" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}">U{u_value}</text>'
             )
 
+    wire_entries: list[dict[str, Any]] = []
+    wire_label_lines: list[str] = []
+    wire_order = 0
+
     for group_key in sorted_group_keys:
         src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media = group_key
         sessions = grouped_sessions[group_key]
@@ -408,25 +547,79 @@ def integrated_wiring_svg(
             c2y = y2 + lane_offset
 
             wire_id = escape(str(row["wire_id"]))
-            label = escape(str(row["label"]))
-            stroke_width = "2.2" if mode == "aggregate" else "1.6"
-            lines.append(
-                f'<path d="M {src_snap_x} {y1 + lane_offset} C {c1x} {c1y}, {c2x} {c2y}, {dst_snap_x} {y2 + lane_offset}" stroke="{color}" stroke-width="{stroke_width}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}" data-group="{group_id}"><title>{label}</title></path>'
+            stroke_width = 2.2 if mode == "aggregate" else 1.6
+            wire_curve = (
+                src_snap_x,
+                y1 + lane_offset,
+                c1x,
+                c1y,
+                c2x,
+                c2y,
+                dst_snap_x,
+                y2 + lane_offset,
             )
+            path_d = (
+                f"M {wire_curve[0]} {wire_curve[1]} "
+                f"C {wire_curve[2]} {wire_curve[3]}, {wire_curve[4]} {wire_curve[5]}, {wire_curve[6]} {wire_curve[7]}"
+            )
+            wire_entries.append(
+                {
+                    "order": wire_order,
+                    "wire_id": str(row["wire_id"]),
+                    "media": media,
+                    "src_rack": src_rack,
+                    "dst_rack": dst_rack,
+                    "group": group_id,
+                    "color": color,
+                    "stroke_width": stroke_width,
+                    "label": str(row["label"]),
+                    "path_d": path_d,
+                    "curve": wire_curve,
+                }
+            )
+            wire_order += 1
+
             if mode == "aggregate":
                 port_text = escape(str(row["port_text"]))
                 mid_x = (src_snap_x + dst_snap_x) / 2 + 8
                 mid_y = (y1 + y2) / 2 + lane_offset - 6
-                lines.append(
+                wire_label_lines.append(
                     f'<text x="{mid_x}" y="{mid_y}" font-size="10" font-family="Arial, sans-serif" fill="#1f2937" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
                 )
             else:
                 port_text = escape(str(row["port_text"]))
                 mid_x = (src_snap_x + dst_snap_x) / 2 + (8 if index % 2 else -8)
                 mid_y = (y1 + y2) / 2 + lane_offset - 3 + ((index % 3) - 1) * 7
-                lines.append(
+                wire_label_lines.append(
                     f'<text x="{mid_x}" y="{mid_y}" font-size="9" font-family="Arial, sans-serif" fill="#334155" opacity="0.62" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
                 )
+
+    for wire in wire_entries:
+        lines.append(
+            f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}"><title>{escape(wire["label"])}</title></path>'
+        )
+
+    for overlay in _integrated_wire_gap_overlays(wire_entries):
+        over_wire = overlay["over"]
+        under_wire = overlay["under"]
+        gap_radius = max(2.8, max(under_wire["stroke_width"], over_wire["stroke_width"]) * 1.9)
+        bridge_half_len = max(4.0, over_wire["stroke_width"] * 2.8)
+        x = overlay["x"]
+        y = overlay["y"]
+        dx = overlay["dx"]
+        dy = overlay["dy"]
+        bx1 = x - dx * bridge_half_len
+        by1 = y - dy * bridge_half_len
+        bx2 = x + dx * bridge_half_len
+        by2 = y + dy * bridge_half_len
+        lines.append(
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{gap_radius:.2f}" fill="#ffffff" class="integrated-wire-gap integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}"/>'
+        )
+        lines.append(
+            f'<line x1="{bx1:.2f}" y1="{by1:.2f}" x2="{bx2:.2f}" y2="{by2:.2f}" stroke="{over_wire["color"]}" stroke-width="{over_wire["stroke_width"]}" stroke-linecap="round" opacity="0.90" class="integrated-wire-overpass integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}"/>'
+        )
+
+    lines.extend(wire_label_lines)
 
     for (rack_id, u_value, slot_value), (x, y) in sorted(node_positions.items()):
         node_label = escape(f"{rack_id}-U{u_value}-S{slot_value}")

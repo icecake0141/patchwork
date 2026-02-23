@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from models import ProjectInput
 from services.allocator import allocate
 from services.export import (
+    _integrated_wire_gap_overlays,
     integrated_wiring_drawio,
     integrated_wiring_interactive_svg,
     integrated_wiring_svg,
@@ -237,6 +238,42 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert "P1→P1" in detailed_svg
     assert "U1S1↔U1S1" in aggregate_svg
     assert "ses/" in aggregate_svg
+
+
+def test_integrated_wire_gap_overlays_detects_crossing() -> None:
+    overlays = _integrated_wire_gap_overlays(
+        [
+            {
+                "order": 0,
+                "wire_id": "w1",
+                "media": "mpo12",
+                "src_rack": "R1",
+                "dst_rack": "R2",
+                "group": "g1",
+                "color": "#111111",
+                "stroke_width": 1.6,
+                "label": "w1",
+                "curve": (20.0, 60.0, 40.0, 60.0, 80.0, 60.0, 100.0, 60.0),
+            },
+            {
+                "order": 1,
+                "wire_id": "w2",
+                "media": "mmf_lc_duplex",
+                "src_rack": "R2",
+                "dst_rack": "R3",
+                "group": "g2",
+                "color": "#222222",
+                "stroke_width": 1.6,
+                "label": "w2",
+                "curve": (60.0, 20.0, 60.0, 40.0, 60.0, 80.0, 60.0, 100.0),
+            },
+        ]
+    )
+
+    assert overlays
+    assert abs(overlays[0]["x"] - 60.0) < 1.5
+    assert abs(overlays[0]["y"] - 60.0) < 1.5
+    assert overlays[0]["over"]["wire_id"] == "w2"
 
 
 def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
