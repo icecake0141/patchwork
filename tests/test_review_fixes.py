@@ -201,6 +201,73 @@ def test_upload_stores_only_trial_id_in_session(tmp_path) -> None:
         assert not any(str(k).startswith("trial:") for k in sess.keys())
 
 
+def test_trial_page_shows_bom_table(tmp_path) -> None:
+    import io
+
+    client = _make_client(str(tmp_path / "t.db"))
+    payload = (
+        b"version: 1\n"
+        b"project:\n"
+        b"  name: sample\n"
+        b"racks:\n"
+        b"  - id: R01\n"
+        b"    name: Rack-01\n"
+        b"  - id: R02\n"
+        b"    name: Rack-02\n"
+        b"demands:\n"
+        b"  - id: D001\n"
+        b"    src: R01\n"
+        b"    dst: R02\n"
+        b"    endpoint_type: mpo12\n"
+        b"    count: 1\n"
+    )
+    post_resp = client.post(
+        "/upload",
+        data={"project_yaml": (io.BytesIO(payload), "ok.yaml")},
+        content_type="multipart/form-data",
+        follow_redirects=False,
+    )
+    assert post_resp.status_code == 302
+
+    trial_resp = client.get("/trial")
+    assert trial_resp.status_code == 200
+    assert b"Bill of Materials" in trial_resp.data
+    assert b"item_type" in trial_resp.data
+    assert b"quantity" in trial_resp.data
+
+
+def test_project_detail_shows_bom_table(tmp_path) -> None:
+    from db import Database
+
+    db_path = str(tmp_path / "t.db")
+    _ = _make_client(db_path)
+
+    payload = {
+        "version": 1,
+        "project": {"name": "bom-view"},
+        "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+        "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+    }
+    result = allocate(ProjectInput.model_validate(payload))
+
+    db = Database(db_path)
+    project_id, revision_id = db.save_revision(
+        project_name="bom-view",
+        note="",
+        input_yaml="version: 1\n",
+        result=result,
+    )
+    assert project_id
+
+    client = _make_client(db_path)
+    resp = client.get(f"/projects/{project_id}?revision_id={revision_id}")
+    assert resp.status_code == 200
+    assert b"Bill of Materials" in resp.data
+    assert b"item_type" in resp.data
+    assert b"description" in resp.data
+    assert b"quantity" in resp.data
+
+
 def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
     from db import Database
 

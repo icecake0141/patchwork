@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Any
 from uuid import uuid4
 
 import yaml
@@ -18,6 +19,7 @@ from models import ProjectInput
 from services.allocator import allocate
 from services.export import (
     bom_csv,
+    bom_rows,
     integrated_wiring_drawio,
     integrated_wiring_interactive_svg,
     integrated_wiring_svg,
@@ -27,7 +29,7 @@ from services.export import (
     wiring_drawio,
     wiring_svg,
 )
-from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
+from services.render_svg import rack_slot_width, render_pair_detail_svg, render_rack_panels_svg
 
 
 def create_app() -> Flask:
@@ -88,8 +90,13 @@ def create_app() -> Flask:
             {"rack_a": rack_a, "rack_b": rack_b, "media": media, "count": count}
             for (rack_a, rack_b, media), count in sorted(topology_counts.items())
         ]
+        bom_table_rows = bom_rows(result)
         racks = sorted({p["rack_id"] for p in result["panels"]})
-        rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
+        uniform_slot_width = rack_slot_width(result)
+        rack_svgs = {
+            rack: render_rack_panels_svg(result, rack, slot_width=uniform_slot_width)
+            for rack in racks
+        }
         wiring_svg_text = wiring_svg(result)
         integrated_wiring_svgs = {
             "aggregate": integrated_wiring_svg(result, mode="aggregate"),
@@ -101,6 +108,7 @@ def create_app() -> Flask:
             "trial.html",
             result=result,
             topology_rows=topology_rows,
+            bom_rows=bom_table_rows,
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
             integrated_wiring_svgs=integrated_wiring_svgs,
@@ -137,6 +145,7 @@ def create_app() -> Flask:
         )
         result = json.loads(chosen["result_json"]) if chosen else None
         topology_rows: list[dict[str, str | int]] = []
+        bom_table_rows: list[dict[str, Any]] = []
         rack_svgs: dict[str, str] = {}
         wiring_svg_text = ""
         integrated_wiring_svgs = {"aggregate": "", "detailed": ""}
@@ -152,8 +161,13 @@ def create_app() -> Flask:
                 {"rack_a": rack_a, "rack_b": rack_b, "media": media, "count": count}
                 for (rack_a, rack_b, media), count in sorted(topology_counts.items())
             ]
+            bom_table_rows = bom_rows(result)
             racks = sorted({panel["rack_id"] for panel in result["panels"]})
-            rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
+            uniform_slot_width = rack_slot_width(result)
+            rack_svgs = {
+                rack: render_rack_panels_svg(result, rack, slot_width=uniform_slot_width)
+                for rack in racks
+            }
             wiring_svg_text = wiring_svg(result)
             integrated_wiring_svgs = {
                 "aggregate": integrated_wiring_svg(result, mode="aggregate"),
@@ -167,6 +181,7 @@ def create_app() -> Flask:
             chosen=chosen,
             result=result,
             topology_rows=topology_rows,
+            bom_rows=bom_table_rows,
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
             integrated_wiring_svgs=integrated_wiring_svgs,

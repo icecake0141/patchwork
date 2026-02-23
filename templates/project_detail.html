@@ -49,6 +49,20 @@
 </div>
 
 <div class="card">
+	<h2>Bill of Materials</h2>
+	<table>
+	<tr><th>item_type</th><th>description</th><th>quantity</th></tr>
+	{% for row in bom_rows %}
+	<tr>
+		<td>{{ row.item_type }}</td>
+		<td>{{ row.description }}</td>
+		<td>{{ row.quantity }}</td>
+	</tr>
+	{% endfor %}
+	</table>
+</div>
+
+<div class="card">
 	<h2>Rack Occupancy</h2>
 	{% for rack,svg in rack_svgs.items() %}
 	<h3>{{ rack }}</h3>

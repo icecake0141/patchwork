@@ -70,8 +70,8 @@ def sessions_csv(result: dict[str, Any], project_id: str, revision_id: str | Non
     return buf.getvalue()
 
 
-def bom_csv(result: dict[str, Any]) -> str:
-    """Generate a Bill of Materials CSV summarising panels, modules, and cables by type."""
+def bom_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build Bill of Materials rows for UI and CSV exports."""
     rows: list[dict[str, Any]] = []
 
     panel_counts: Counter[str] = Counter()
@@ -97,10 +97,15 @@ def bom_csv(result: dict[str, Any]) -> str:
     for desc, qty in sorted(cable_counts.items()):
         rows.append({"item_type": "cable", "description": desc, "quantity": qty})
 
+    return rows
+
+
+def bom_csv(result: dict[str, Any]) -> str:
+    """Generate a Bill of Materials CSV summarising panels, modules, and cables by type."""
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=BOM_COLUMNS)
     writer.writeheader()
-    writer.writerows(rows)
+    writer.writerows(bom_rows(result))
     return buf.getvalue()
 
 
