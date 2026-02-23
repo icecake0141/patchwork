@@ -127,6 +127,38 @@ def _ordered_ports_for_layout(profile: dict[str, Any], capacity: int) -> list[in
     return list(range(1, capacity + 1))
 
 
+def _slot_state_theme(slot_state: str) -> dict[str, str]:
+    if slot_state == "full":
+        return {
+            "slot_fill": "#fee2e2",
+            "front_fill": "#fff5f5",
+            "rear_fill": "#fee2e2",
+            "anchor_front_fill": "#fff5f5",
+            "anchor_rear_fill": "#fee2e2",
+            "border": "#fca5a5",
+            "lane": "#fca5a5",
+        }
+    if slot_state == "partial":
+        return {
+            "slot_fill": "#fef3c7",
+            "front_fill": "#fff9e8",
+            "rear_fill": "#fef3c7",
+            "anchor_front_fill": "#fff9e8",
+            "anchor_rear_fill": "#fef3c7",
+            "border": "#fcd34d",
+            "lane": "#f59e0b",
+        }
+    return {
+        "slot_fill": "#f1f5f9",
+        "front_fill": "#f8fafc",
+        "rear_fill": "#e2e8f0",
+        "anchor_front_fill": "#f8fafc",
+        "anchor_rear_fill": "#e2e8f0",
+        "border": "#cbd5e1",
+        "lane": "#94a3b8",
+    }
+
+
 def _cubic_point(
     curve: tuple[float, float, float, float, float, float, float, float], t: float
 ) -> tuple[float, float]:
@@ -616,23 +648,30 @@ def integrated_wiring_svg(
                 slot_state = "full"
             else:
                 slot_state = "partial"
+            slot_theme = _slot_state_theme(slot_state)
 
             box_h = 24 + slot_capacity * mapping_row_h + slot_inner_bottom
             box_y = y - box_h / 2
             box_x = min(front_x, rear_x) - 12
             box_w = abs(rear_x - front_x) + 24
             node_lines.append(
-                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="none" stroke="#94a3b8" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
+                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="{slot_theme["slot_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
             )
             col_w = 22
             front_col_x = front_x - col_w / 2
             rear_col_x = rear_x - col_w / 2
             node_lines.append(
-                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["front_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
             )
             node_lines.append(
-                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["rear_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
             )
+            rear_lane_start_y = int(box_y + 21)
+            rear_lane_end_y = int(box_y + box_h - 4)
+            for lane_y in range(rear_lane_start_y, rear_lane_end_y, 5):
+                node_lines.append(
+                    f'<line x1="{rear_col_x + 2}" y1="{lane_y}" x2="{rear_col_x + col_w - 2}" y2="{lane_y}" stroke="{slot_theme["lane"]}" stroke-width="0.5" opacity="0.55" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                )
             node_lines.append(
                 f'<line x1="{x}" y1="{box_y + 18}" x2="{x}" y2="{box_y + box_h - 2}" stroke="#94a3b8" stroke-width="1" class="integrated-rack-element" data-rack="{escape(rack_id)}"/>'
             )
@@ -659,17 +698,23 @@ def integrated_wiring_svg(
             for idx, port in enumerate(ordered_ports):
                 row_y = mapping_y + idx * mapping_row_h
                 anchor_y = row_y - 3
-                slot_anchor_positions[(rack_id, u_value, slot_value, int(port))] = (rear_x, anchor_y)
-
                 port_state = "occupied" if port in ports_set else "free"
                 line_opacity = "1.0" if port_state == "occupied" else "0.30"
                 anchor_w = 14
                 anchor_h = 8
-                node_lines.append(
-                    f'<rect x="{front_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
+                rear_snap_x = rear_x + (anchor_w / 2 if rear_dx > 0 else -anchor_w / 2)
+                slot_anchor_positions[(rack_id, u_value, slot_value, int(port))] = (
+                    rear_snap_x,
+                    anchor_y,
                 )
                 node_lines.append(
-                    f'<rect x="{rear_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
+                    f'<rect x="{front_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_front_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
+                )
+                node_lines.append(
+                    f'<rect x="{rear_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
+                )
+                node_lines.append(
+                    f'<line x1="{rear_x - anchor_w / 2 + 1.0}" y1="{anchor_y - 1.1}" x2="{rear_x + anchor_w / 2 - 1.0}" y2="{anchor_y - 1.1}" stroke="{slot_theme["lane"]}" stroke-width="0.5" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}"/>'
                 )
                 node_lines.append(
                     f'<text x="{front_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'

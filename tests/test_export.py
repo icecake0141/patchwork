@@ -233,6 +233,7 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     aggregate_svg = integrated_wiring_svg(result, mode="aggregate")
 
     assert 'class="integrated-port-label integrated-filterable"' in detailed_svg
+    assert 'class="integrated-port-label integrated-rack-element"' not in detailed_svg
     assert detailed_svg.count(">P1</text>") >= 2
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
