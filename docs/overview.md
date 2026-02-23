@@ -2,7 +2,7 @@
 <!-- This file was created or modified with the assistance of an AI (Large Language Model). -->
 # Overview
 
-This implementation follows the v0 design spec for rack-to-rack cabling allocation:
+This implementation follows the design spec for rack-to-rack cabling allocation:
 
 - Supported media: MMF/SMF LC duplex, MPO12, UTP RJ45.
 - Slot category priority: MPO E2E → LC MMF → LC SMF → UTP.
@@ -83,7 +83,7 @@ Constraints and behavior:
 
 ## 日本語訳
 
-この実装は、ラック間配線割り当てに関する v0 設計仕様に準拠しています。
+この実装は、ラック間配線割り当てに関する設計仕様に準拠しています。
 
 - 対応メディア: MMF/SMF LC duplex、MPO12、UTP RJ45。
 - スロットカテゴリ優先順位: MPO E2E → LC MMF → LC SMF → UTP。
