@@ -14,26 +14,48 @@ name: CI
 
 on:
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
   push:
     branches:
       - main
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
 
 # Cancel in-progress runs for the same workflow + PR/branch to avoid wasting runner minutes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Minimal permissions — both jobs only need to read repository contents.
+# Minimal permissions — jobs only need to read repository contents.
 permissions:
   contents: read
 
 jobs:
+  docs-validate:
+    name: Docs Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Run ruff for onboarding verification test
+        run: ruff check tests/test_onboarding_samples.py
+
+      - name: Run black (check mode) for onboarding verification test
+        run: black --check tests/test_onboarding_samples.py
+
+      - name: Run onboarding sample verification test
+        run: pytest -q tests/test_onboarding_samples.py
+
   lint-and-typecheck:
     # Lint, format, and type-check run on a single Python version.
     # mypy is configured for python_version = "3.10"; no benefit from repeating on 3.11/3.12.
