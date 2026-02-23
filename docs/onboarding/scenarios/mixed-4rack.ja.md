@@ -48,6 +48,23 @@ Review required for correctness, security, and licensing.
 3. Integrated view で media フィルタを切替えて経路を確認
 4. 2ラック構成の BOM と比較して複雑化を確認
 
+## スクリーンショット（任意）
+- Upload 画面
+
+![混在4ラック Upload 画面](../images/mixed-4rack/upload-page.png)
+
+- Project detail 画面
+
+![混在4ラック Project detail 画面](../images/mixed-4rack/project-detail.png)
+
+- Integrated Wiring（Aggregate）
+
+![混在4ラック Integrated Wiring Aggregate](../images/mixed-4rack/integrated-aggregate.png)
+
+- Integrated Wiring（Detailed）
+
+![混在4ラック Integrated Wiring Detailed](../images/mixed-4rack/integrated-detailed.png)
+
 ## 関連ドキュメント
 - [オンボーディング目次](../README.ja.md)
 - [English version](mixed-4rack.en.md)

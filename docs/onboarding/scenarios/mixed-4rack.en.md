@@ -48,6 +48,23 @@ Demonstrate a slightly larger topology with multiple peers and media.
 3. Filter by media in integrated view and inspect path grouping.
 4. Compare BOM complexity against the 2-rack scenario.
 
+## Screenshots (optional)
+- Upload page
+
+![Mixed 4-rack upload page](../images/mixed-4rack/upload-page.png)
+
+- Project detail page
+
+![Mixed 4-rack project detail](../images/mixed-4rack/project-detail.png)
+
+- Integrated Wiring (Aggregate)
+
+![Mixed 4-rack integrated aggregate](../images/mixed-4rack/integrated-aggregate.png)
+
+- Integrated Wiring (Detailed)
+
+![Mixed 4-rack integrated detailed](../images/mixed-4rack/integrated-detailed.png)
+
 ## Related docs
 - [Onboarding index](../README.en.md)
 - [Japanese version](mixed-4rack.ja.md)
