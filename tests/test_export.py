@@ -237,7 +237,10 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
     assert "occ 1/12" in detailed_svg
-    assert 'data-slot-state="occupied"' in detailed_svg
+    assert 'data-slot-state="partial"' in detailed_svg
+    assert 'data-port-state="occupied"' in detailed_svg
+    assert 'data-port-state="free"' in detailed_svg
+    assert ">P12</text>" in detailed_svg
     assert "P1→P1" in detailed_svg
     assert "U1S1↔U1S1" in aggregate_svg
     assert "ses/" in aggregate_svg
@@ -264,6 +267,8 @@ def test_integrated_wiring_svg_shows_utp_slot_capacity() -> None:
     detailed_svg = integrated_wiring_svg(result, mode="detailed")
 
     assert "occ 1/6" in detailed_svg
+    assert 'data-slot-state="partial"' in detailed_svg
+    assert ">P6</text>" in detailed_svg
 
 
 def test_integrated_wire_gap_overlays_detects_crossing() -> None:

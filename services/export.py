@@ -419,7 +419,16 @@ def integrated_wiring_svg(
     for key in sorted_group_keys:
         grouped_sessions[key].sort(key=lambda s: (int(s["src_port"]), int(s["dst_port"])))
 
-    max_ports_per_slot = max((len(ports) for ports in slot_used_ports.values()), default=1)
+    max_ports_per_slot = max(
+        [
+            *(len(ports) for ports in slot_used_ports.values()),
+            *(
+                module_capacity_by_slot.get((rack_id, u_value, slot_value), 0)
+                for rack_id, u_value, slot_value in slot_used_ports.keys()
+            ),
+        ],
+        default=1,
+    )
     mapping_row_h = 11
     slot_inner_top = 24
     slot_inner_bottom = 12
@@ -672,11 +681,17 @@ def integrated_wiring_svg(
             front_x = x - rear_dx
             rear_x = x + rear_dx
             ports = sorted(slot_used_ports.get((rack_id, u_value, slot_value), set()))
+            ports_set = set(ports)
             shown_ports = len(ports)
             slot_capacity = module_capacity_by_slot.get((rack_id, u_value, slot_value), shown_ports)
             slot_capacity = max(slot_capacity, shown_ports)
-            slot_state = "occupied" if shown_ports > 0 else "free"
-            box_h = 24 + shown_ports * mapping_row_h + slot_inner_bottom
+            if shown_ports == 0:
+                slot_state = "free"
+            elif shown_ports >= slot_capacity:
+                slot_state = "full"
+            else:
+                slot_state = "partial"
+            box_h = 24 + slot_capacity * mapping_row_h + slot_inner_bottom
             box_y = y - box_h / 2
             box_x = min(front_x, rear_x) - 12
             box_w = abs(rear_x - front_x) + 24
@@ -710,16 +725,19 @@ def integrated_wiring_svg(
                 f'<text x="{rear_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Rear</text>'
             )
             mapping_y = box_y + slot_inner_top + 6
-            for idx, port in enumerate(ports):
+            for idx, port in enumerate(range(1, slot_capacity + 1)):
                 row_y = mapping_y + idx * mapping_row_h
+                port_state = "occupied" if port in ports_set else "free"
+                line_opacity = "1.0" if port_state == "occupied" else "0.30"
+                text_fill = "#0f172a" if port_state == "occupied" else "#64748b"
                 lines.append(
-                    f'<text x="{front_x - (30 if rear_dx > 0 else -6)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="#0f172a" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}">P{port}</text>'
+                    f'<text x="{front_x - (30 if rear_dx > 0 else -6)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
                 )
                 lines.append(
-                    f'<line x1="{front_x}" y1="{row_y - 3}" x2="{rear_x}" y2="{row_y - 3}" stroke="#94a3b8" stroke-width="0.9" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                    f'<line x1="{front_x}" y1="{row_y - 3}" x2="{rear_x}" y2="{row_y - 3}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
                 )
                 lines.append(
-                    f'<text x="{rear_x + (6 if rear_dx > 0 else -28)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="#0f172a" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}">P{port}</text>'
+                    f'<text x="{rear_x + (6 if rear_dx > 0 else -28)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
                 )
         else:
             lines.append(
