@@ -12,7 +12,7 @@ This file was created or modified with the assistance of an AI (Large Language M
 Review required for correctness, security, and licensing.
 -->
 
-# Patchwork (v0)
+# Patchwork
 
 [![CI](https://github.com/icecake0141/patchwork/actions/workflows/ci.yml/badge.svg)](https://github.com/icecake0141/patchwork/actions/workflows/ci.yml)
 [![Dependabot Updates](https://github.com/icecake0141/patchwork/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/icecake0141/patchwork/actions/workflows/dependabot/dependabot-updates)
