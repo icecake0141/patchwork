@@ -587,6 +587,105 @@ def integrated_wiring_svg(
     wire_entries: list[dict[str, Any]] = []
     wire_label_lines: list[str] = []
     wire_order = 0
+    node_lines: list[str] = []
+    slot_anchor_positions: dict[tuple[str, int, int, int], tuple[float, float]] = {}
+    slot_side_positions: dict[tuple[str, int, int], tuple[float, float, float]] = {}
+
+    for (rack_id, u_value, slot_value), (x, y) in sorted(node_positions.items()):
+        node_label = escape(f"{rack_id}-U{u_value}-S{slot_value}")
+        if (rack_id, u_value, slot_value) in used_slots:
+            rear_dx = 32 if rack_side[rack_id] == "left" else -32
+            front_x = x - rear_dx
+            rear_x = x + rear_dx
+            slot_side_positions[(rack_id, u_value, slot_value)] = (front_x, rear_x, rear_dx)
+
+            ports = sorted(slot_used_ports.get((rack_id, u_value, slot_value), set()))
+            ports_set = set(ports)
+            shown_ports = len(ports)
+            slot_capacity = module_capacity_by_slot.get((rack_id, u_value, slot_value), shown_ports)
+            slot_capacity = max(slot_capacity, shown_ports)
+            slot_layout_profile = module_layout_by_slot.get(
+                (rack_id, u_value, slot_value),
+                _media_layout_profile(""),
+            )
+            slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
+            slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
+            if shown_ports == 0:
+                slot_state = "free"
+            elif shown_ports >= slot_capacity:
+                slot_state = "full"
+            else:
+                slot_state = "partial"
+
+            box_h = 24 + slot_capacity * mapping_row_h + slot_inner_bottom
+            box_y = y - box_h / 2
+            box_x = min(front_x, rear_x) - 12
+            box_w = abs(rear_x - front_x) + 24
+            node_lines.append(
+                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="none" stroke="#94a3b8" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
+            )
+            col_w = 22
+            front_col_x = front_x - col_w / 2
+            rear_col_x = rear_x - col_w / 2
+            node_lines.append(
+                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+            )
+            node_lines.append(
+                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+            )
+            node_lines.append(
+                f'<line x1="{x}" y1="{box_y + 18}" x2="{x}" y2="{box_y + box_h - 2}" stroke="#94a3b8" stroke-width="1" class="integrated-rack-element" data-rack="{escape(rack_id)}"/>'
+            )
+            node_lines.append(
+                f'<text x="{x - 8}" y="{box_y - 5}" font-size="12" font-family="Arial, sans-serif" fill="#0f172a" font-weight="bold" class="integrated-rack-element" data-rack="{escape(rack_id)}">S{slot_value}</text>'
+            )
+            node_lines.append(
+                f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">occ {shown_ports}/{slot_capacity}</text>'
+            )
+            node_lines.append(
+                f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
+            )
+            front_label_x = front_x - 26 if rear_dx > 0 else front_x + 6
+            rear_label_x = rear_x + 6 if rear_dx > 0 else rear_x - 28
+            node_lines.append(
+                f'<text x="{front_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Front</text>'
+            )
+            node_lines.append(
+                f'<text x="{rear_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Rear</text>'
+            )
+
+            mapping_y = box_y + slot_inner_top + 6
+            ordered_ports = _ordered_ports_for_layout(slot_layout_profile, slot_capacity)
+            for idx, port in enumerate(ordered_ports):
+                row_y = mapping_y + idx * mapping_row_h
+                anchor_y = row_y - 3
+                slot_anchor_positions[(rack_id, u_value, slot_value, int(port))] = (rear_x, anchor_y)
+
+                port_state = "occupied" if port in ports_set else "free"
+                line_opacity = "1.0" if port_state == "occupied" else "0.30"
+                text_fill = "#0f172a" if port_state == "occupied" else "#64748b"
+                node_lines.append(
+                    f'<rect x="{front_x - 2.5}" y="{anchor_y - 2.5}" width="5" height="5" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
+                )
+                node_lines.append(
+                    f'<rect x="{rear_x - 2.5}" y="{anchor_y - 2.5}" width="5" height="5" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
+                )
+                node_lines.append(
+                    f'<text x="{front_x - (30 if rear_dx > 0 else -6)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
+                )
+                node_lines.append(
+                    f'<line x1="{front_x}" y1="{anchor_y}" x2="{rear_x}" y2="{anchor_y}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
+                )
+                node_lines.append(
+                    f'<text x="{rear_x + (6 if rear_dx > 0 else -28)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
+                )
+        else:
+            node_lines.append(
+                f'<circle cx="{x}" cy="{y}" r="3.1" fill="#111827" class="integrated-node integrated-rack-element" data-node="{node_label}" data-rack="{escape(rack_id)}"/>'
+            )
+            node_lines.append(
+                f'<text x="{x + 6}" y="{y + 3}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">S{slot_value}</text>'
+            )
 
     for group_key in sorted_group_keys:
         src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media = group_key
@@ -605,6 +704,8 @@ def integrated_wiring_svg(
             src_max = max(src_ports)
             dst_min = min(dst_ports)
             dst_max = max(dst_ports)
+            src_anchor_port = sorted(src_ports)[len(src_ports) // 2]
+            dst_anchor_port = sorted(dst_ports)[len(dst_ports) // 2]
             cable_count = len({str(s["cable_id"]) for s in sessions})
             if src_min == src_max and dst_min == dst_max:
                 port_span_text = f"P{src_min}→P{dst_min}"
@@ -615,8 +716,8 @@ def integrated_wiring_svg(
                 {
                     "wire_id": f"{src_rack}-{src_u}-{src_slot}__{dst_rack}-{dst_u}-{dst_slot}__{media}",
                     "media": media,
-                    "src_port": src_min,
-                    "dst_port": dst_min,
+                    "src_port": src_anchor_port,
+                    "dst_port": dst_anchor_port,
                     "port_text": (
                         f"U{src_u}S{src_slot}↔U{dst_u}S{dst_slot} "
                         f"({port_span_text}, {len(sessions)} ses/{cable_count} cab)"
@@ -651,12 +752,28 @@ def integrated_wiring_svg(
             lane_offset = (index - (total - 1) / 2) * 8.0
             x1, y1 = src_pos
             x2, y2 = dst_pos
-            src_rear_dx = 32 if rack_side[src_rack] == "left" else -32
-            dst_rear_dx = 32 if rack_side[dst_rack] == "left" else -32
-            src_rear_x = x1 + src_rear_dx
-            dst_rear_x = x2 + dst_rear_dx
-            src_snap_x = src_rear_x + (12 if src_rear_dx > 0 else -12)
-            dst_snap_x = dst_rear_x + (12 if dst_rear_dx > 0 else -12)
+            src_side = slot_side_positions.get((src_rack, src_u, src_slot))
+            dst_side = slot_side_positions.get((dst_rack, dst_u, dst_slot))
+            if src_side is not None:
+                _src_front_x, src_rear_x, src_rear_dx = src_side
+            else:
+                src_rear_dx = 32 if rack_side[src_rack] == "left" else -32
+                src_rear_x = x1 + src_rear_dx
+            if dst_side is not None:
+                _dst_front_x, dst_rear_x, dst_rear_dx = dst_side
+            else:
+                dst_rear_dx = 32 if rack_side[dst_rack] == "left" else -32
+                dst_rear_x = x2 + dst_rear_dx
+
+            src_anchor = slot_anchor_positions.get((src_rack, src_u, src_slot, int(row["src_port"])))
+            dst_anchor = slot_anchor_positions.get((dst_rack, dst_u, dst_slot, int(row["dst_port"])))
+            if src_anchor is not None:
+                src_rear_x, y1 = src_anchor
+            if dst_anchor is not None:
+                dst_rear_x, y2 = dst_anchor
+
+            src_snap_x = src_rear_x
+            dst_snap_x = dst_rear_x
             curve_strength = max(36.0, abs(dst_snap_x - src_snap_x) * 0.25)
             c1x = src_snap_x + (curve_strength if src_snap_x <= dst_snap_x else -curve_strength)
             c2x = dst_snap_x - (curve_strength if src_snap_x <= dst_snap_x else -curve_strength)
@@ -712,6 +829,8 @@ def integrated_wiring_svg(
                     f'<text x="{mid_x}" y="{mid_y}" font-size="9" font-family="Arial, sans-serif" fill="#334155" opacity="0.62" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
                 )
 
+    lines.extend(node_lines)
+
     for wire in wire_entries:
         lines.append(
             f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}" data-direction="src-to-dst" data-port-order="{escape(str(wire["port_order"]))}"><title>{escape(wire["label"])} </title></path>'
@@ -751,89 +870,6 @@ def integrated_wiring_svg(
         )
 
     lines.extend(wire_label_lines)
-
-    for (rack_id, u_value, slot_value), (x, y) in sorted(node_positions.items()):
-        node_label = escape(f"{rack_id}-U{u_value}-S{slot_value}")
-        if (rack_id, u_value, slot_value) in used_slots:
-            rear_dx = 32 if rack_side[rack_id] == "left" else -32
-            front_x = x - rear_dx
-            rear_x = x + rear_dx
-            ports = sorted(slot_used_ports.get((rack_id, u_value, slot_value), set()))
-            ports_set = set(ports)
-            shown_ports = len(ports)
-            slot_capacity = module_capacity_by_slot.get((rack_id, u_value, slot_value), shown_ports)
-            slot_capacity = max(slot_capacity, shown_ports)
-            slot_layout_profile = module_layout_by_slot.get(
-                (rack_id, u_value, slot_value),
-                _media_layout_profile(""),
-            )
-            slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
-            slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
-            if shown_ports == 0:
-                slot_state = "free"
-            elif shown_ports >= slot_capacity:
-                slot_state = "full"
-            else:
-                slot_state = "partial"
-            box_h = 24 + slot_capacity * mapping_row_h + slot_inner_bottom
-            box_y = y - box_h / 2
-            box_x = min(front_x, rear_x) - 12
-            box_w = abs(rear_x - front_x) + 24
-            lines.append(
-                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="none" stroke="#94a3b8" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
-            )
-            col_w = 22
-            front_col_x = front_x - col_w / 2
-            rear_col_x = rear_x - col_w / 2
-            lines.append(
-                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
-            )
-            lines.append(
-                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
-            )
-            lines.append(
-                f'<line x1="{x}" y1="{box_y + 18}" x2="{x}" y2="{box_y + box_h - 2}" stroke="#94a3b8" stroke-width="1" class="integrated-rack-element" data-rack="{escape(rack_id)}"/>'
-            )
-            lines.append(
-                f'<text x="{x - 8}" y="{box_y - 5}" font-size="12" font-family="Arial, sans-serif" fill="#0f172a" font-weight="bold" class="integrated-rack-element" data-rack="{escape(rack_id)}">S{slot_value}</text>'
-            )
-            lines.append(
-                f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">occ {shown_ports}/{slot_capacity}</text>'
-            )
-            lines.append(
-                f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
-            )
-            front_label_x = front_x - 26 if rear_dx > 0 else front_x + 6
-            rear_label_x = rear_x + 6 if rear_dx > 0 else rear_x - 28
-            lines.append(
-                f'<text x="{front_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Front</text>'
-            )
-            lines.append(
-                f'<text x="{rear_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Rear</text>'
-            )
-            mapping_y = box_y + slot_inner_top + 6
-            ordered_ports = _ordered_ports_for_layout(slot_layout_profile, slot_capacity)
-            for idx, port in enumerate(ordered_ports):
-                row_y = mapping_y + idx * mapping_row_h
-                port_state = "occupied" if port in ports_set else "free"
-                line_opacity = "1.0" if port_state == "occupied" else "0.30"
-                text_fill = "#0f172a" if port_state == "occupied" else "#64748b"
-                lines.append(
-                    f'<text x="{front_x - (30 if rear_dx > 0 else -6)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
-                )
-                lines.append(
-                    f'<line x1="{front_x}" y1="{row_y - 3}" x2="{rear_x}" y2="{row_y - 3}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
-                )
-                lines.append(
-                    f'<text x="{rear_x + (6 if rear_dx > 0 else -28)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
-                )
-        else:
-            lines.append(
-                f'<circle cx="{x}" cy="{y}" r="3.1" fill="#111827" class="integrated-node integrated-rack-element" data-node="{node_label}" data-rack="{escape(rack_id)}"/>'
-            )
-            lines.append(
-                f'<text x="{x + 6}" y="{y + 3}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">S{slot_value}</text>'
-            )
 
     lines.extend(rack_label_lines)
 
