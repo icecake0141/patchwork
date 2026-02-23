@@ -82,6 +82,9 @@ def test_acceptance_smoke_ui_and_exports_by_scenario(
             in trial_response.data
         )
         assert b"Gap Jump Scale" in trial_response.data
+        assert b"Port State" in trial_response.data
+        assert b"occupied" in trial_response.data
+        assert b"free" in trial_response.data
         assert b"Auto \xc3\x97 0.50" in trial_response.data
         assert b"Auto \xc3\x97 2.00" in trial_response.data
 

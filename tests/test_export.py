@@ -435,7 +435,9 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     assert "<foreignObject" in svg
     assert 'data-role="integrated-media"' in svg
     assert 'data-role="integrated-rack"' in svg
+    assert 'data-role="integrated-port-state"' in svg
     assert ".integrated-filterable" in svg
+    assert "Port State" in svg
     assert "Legend" in svg
     assert "background:#7c3aed" in svg
 

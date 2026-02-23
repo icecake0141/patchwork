@@ -1063,6 +1063,12 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         f'<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-rack" value="{escape(rack_id, quote=True)}" checked="checked" />{escape(rack_id)}</label>'
         for rack_id in rack_ids
     )
+    port_state_controls = "".join(
+        [
+            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="occupied" checked="checked" />occupied</label>',
+            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" checked="checked" />free</label>',
+        ]
+    )
     legend_items = "".join(
         f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{MEDIA_COLORS.get(media, "#334155")};"></span>{escape(media)}</span>'
         for media in media_types
@@ -1096,6 +1102,15 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "</foreignObject>"
     )
 
+    port_state_object = (
+        f'<foreignObject x="16" y="104" width="{controls_w:.0f}" height="28">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 3px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
+        '<span style="font-weight: 700;">Port State</span>'
+        f"{port_state_controls}"
+        "</div>"
+        "</foreignObject>"
+    )
+
     script = (
         "<script><![CDATA[(function(){"
         "const svg=(document.currentScript&&document.currentScript.ownerSVGElement)||document.documentElement;"
@@ -1104,6 +1119,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "const apply=()=>{"
         "const selectedMedia=getChecked('input[data-role=\"integrated-media\"]');"
         "const selectedRacks=getChecked('input[data-role=\"integrated-rack\"]');"
+        "const selectedPortStates=getChecked('input[data-role=\"integrated-port-state\"]');"
         "let hasVisibleHighlighted=false;"
         "const wires=Array.from(svg.querySelectorAll('.integrated-filterable'));"
         "wires.forEach((wire)=>{"
@@ -1127,8 +1143,15 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "const rack=el.getAttribute('data-rack')||'';"
         "el.style.display=selectedRacks.has(rack)?'':'';"
         "});"
+        "svg.querySelectorAll('[data-port-state]').forEach((el)=>{"
+        "const rack=el.getAttribute('data-rack')||'';"
+        "const portState=el.getAttribute('data-port-state')||'';"
+        "const rackVisible=!rack||selectedRacks.has(rack);"
+        "const stateVisible=selectedPortStates.has(portState);"
+        "el.style.display=rackVisible&&stateVisible?'':'none';"
+        "});"
         "};"
-        "svg.querySelectorAll('input[data-role=\"integrated-media\"],input[data-role=\"integrated-rack\"]').forEach((el)=>el.addEventListener('change',apply));"
+        "svg.querySelectorAll('input[data-role=\"integrated-media\"],input[data-role=\"integrated-rack\"],input[data-role=\"integrated-port-state\"]').forEach((el)=>el.addEventListener('change',apply));"
         "svg.addEventListener('click',(event)=>{"
         "const target=event.target.closest('.integrated-filterable');"
         "if(!target){highlightedWireId='';apply();return;}"
@@ -1163,7 +1186,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         content_parts.append(ET.tostring(child, encoding="unicode"))
     content_inner = "".join(content_parts)
 
-    controls_block_h = 104.0
+    controls_block_h = 136.0
     title_y = controls_block_h + 6.0
     title_h = 76.0
     diagram_y = title_y + title_h + 8.0
@@ -1185,6 +1208,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         f"{media_controls_object}"
         f"{rack_controls_object}"
         f"{legend_object}"
+        f"{port_state_object}"
         f'<g transform="translate(0,{shift_y:.0f})">{content_inner}</g>'
         f"{script}"
         "</svg>"

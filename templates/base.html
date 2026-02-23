@@ -411,6 +411,13 @@
         )
       );
 
+    const getSelectedPortStates = (card) =>
+      new Set(
+        Array.from(card.querySelectorAll('input[data-role="integrated-port-state"]:checked')).map(
+          (input) => input.value
+        )
+      );
+
     const getGapScaleFactor = (card) => {
       const select = card.querySelector('select[data-role="integrated-gap-scale"]');
       const value = select ? Number.parseFloat(select.value) : 1.0;
@@ -588,6 +595,7 @@
     const applyFilters = (card) => {
       const selectedMedia = getSelectedMedia(card);
       const selectedRacks = getSelectedRacks(card);
+      const selectedPortStates = getSelectedPortStates(card);
       const gapScaleFactor = getGapScaleFactor(card);
       let highlightedWireId = getHighlightedWireId(card);
       const svg = getActiveSvg(card);
@@ -634,6 +642,14 @@
         const rack = element.getAttribute("data-rack") || "";
         element.style.display = selectedRacks.has(rack) ? "" : "none";
       });
+
+      svg.querySelectorAll('[data-port-state]').forEach((element) => {
+        const rack = element.getAttribute("data-rack") || "";
+        const portState = element.getAttribute("data-port-state") || "";
+        const rackVisible = !rack || selectedRacks.has(rack);
+        const stateVisible = selectedPortStates.has(portState);
+        element.style.display = rackVisible && stateVisible ? "" : "none";
+      });
       applyGapScale(svg, gapScaleFactor);
     };
 
@@ -666,6 +682,11 @@
         });
       });
       card.querySelectorAll('input[data-role="integrated-rack"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyFilters(card);
+        });
+      });
+      card.querySelectorAll('input[data-role="integrated-port-state"]').forEach((input) => {
         input.addEventListener("change", () => {
           applyFilters(card);
         });

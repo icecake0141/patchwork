@@ -327,6 +327,7 @@ def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
     assert b"<foreignObject" in resp_integrated_interactive.data
     assert b'data-role="integrated-media"' in resp_integrated_interactive.data
     assert b'data-role="integrated-rack"' in resp_integrated_interactive.data
+    assert b'data-role="integrated-port-state"' in resp_integrated_interactive.data
 
     resp_rack = client.get(f"/revisions/{revision_id}/export/rack_occupancy.drawio")
     assert resp_rack.status_code == 200
