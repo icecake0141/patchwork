@@ -19,17 +19,53 @@
 {% if chosen %}
 <div class="card">
 	<h2>Revision {{ chosen.revision_id }}</h2>
-	<div class="actions">
-		<a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">Export sessions.csv</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/wiring.svg">Export wiring.svg</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/wiring.drawio">Export wiring.drawio</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring.drawio">Export integrated_wiring.drawio</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring_interactive.svg?mode=aggregate">Export integrated_wiring_interactive_aggregate.svg</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring_interactive.svg?mode=detailed">Export integrated_wiring_interactive_detailed.svg</a>
-		<a href="/revisions/{{ chosen.revision_id }}/export/rack_occupancy.drawio">Export rack_occupancy.drawio</a>
-	</div>
+	<p class="muted">ダウンロードは内容ごとにまとめています。同じ行の SVG / Draw.io は同一内容の別形式です。</p>
+	<table>
+	<tr><th>group</th><th>description</th><th>downloads</th></tr>
+	<tr>
+		<td>Raw Data</td>
+		<td>配線セッションの明細データ（表形式）。</td>
+		<td><a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">sessions.csv</a></td>
+	</tr>
+	<tr>
+		<td>Raw Data</td>
+		<td>部材集計（BoM）の一覧データ。</td>
+		<td><a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">bom.csv</a></td>
+	</tr>
+	<tr>
+		<td>Raw Data</td>
+		<td>割当結果全体のJSONデータ。</td>
+		<td><a href="/revisions/{{ chosen.revision_id }}/export/result.json">result.json</a></td>
+	</tr>
+	<tr>
+		<td>Cable Wiring Diagram</td>
+		<td>ケーブル配線図（接続詳細）。</td>
+		<td>
+			<a href="/revisions/{{ chosen.revision_id }}/export/wiring.svg">SVG</a>
+			 /
+			<a href="/revisions/{{ chosen.revision_id }}/export/wiring.drawio">Draw.io</a>
+		</td>
+	</tr>
+	<tr>
+		<td>Integrated Wiring View</td>
+		<td>統合配線ビュー（Aggregate/Detailed を含む構成）。</td>
+		<td><a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring.drawio">Draw.io</a></td>
+	</tr>
+	<tr>
+		<td>Integrated Wiring View (Interactive)</td>
+		<td>フィルタ付きの統合配線ビュー（単体SVG）。</td>
+		<td>
+			<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring_interactive.svg?mode=aggregate">SVG (Aggregate)</a>
+			 /
+			<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring_interactive.svg?mode=detailed">SVG (Detailed)</a>
+		</td>
+	</tr>
+	<tr>
+		<td>Rack Occupancy</td>
+		<td>ラック占有図（全ラックを1シートで出力）。</td>
+		<td><a href="/revisions/{{ chosen.revision_id }}/export/rack_occupancy.drawio">Draw.io</a></td>
+	</tr>
+	</table>
 	<p>Sessions: {{ result.metrics.session_count }} / Modules: {{ result.metrics.module_count }}</p>
 </div>
 
