@@ -1,0 +1,202 @@
+# SPDX-License-Identifier: Apache-2.0
+# This file was created or modified with the assistance of an AI (Large Language Model).
+# Practical 10-rack / ~200 links sample for Patchwork
+version: 1
+project:
+  name: dc-cabling-10rack-200links
+  note: 10ラック規模・ラック間配線200本（MPO 15%, SMF LC 60%, MMF LC 15%, UTP 10%）
+racks:
+  - id: R01
+    name: Spine-01
+    max_u: 42
+  - id: R02
+    name: Spine-02
+    max_u: 42
+  - id: R03
+    name: Leaf-01
+    max_u: 42
+  - id: R04
+    name: Leaf-02
+    max_u: 42
+  - id: R05
+    name: Leaf-03
+    max_u: 42
+  - id: R06
+    name: Compute-01
+    max_u: 42
+  - id: R07
+    name: Compute-02
+    max_u: 42
+  - id: R08
+    name: Storage-01
+    max_u: 42
+  - id: R09
+    name: Storage-02
+    max_u: 42
+  - id: R10
+    name: Mgmt-Services
+    max_u: 42
+demands:
+  # MPO-12 (30 / 200 = 15%)
+  - id: D001
+    src: R01
+    dst: R03
+    endpoint_type: mpo12
+    count: 5
+  - id: D002
+    src: R02
+    dst: R03
+    endpoint_type: mpo12
+    count: 5
+  - id: D003
+    src: R01
+    dst: R04
+    endpoint_type: mpo12
+    count: 5
+  - id: D004
+    src: R02
+    dst: R04
+    endpoint_type: mpo12
+    count: 5
+  - id: D005
+    src: R01
+    dst: R05
+    endpoint_type: mpo12
+    count: 5
+  - id: D006
+    src: R02
+    dst: R05
+    endpoint_type: mpo12
+    count: 5
+
+  # SMF LC duplex (120 / 200 = 60%)
+  - id: D007
+    src: R01
+    dst: R06
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D008
+    src: R02
+    dst: R06
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D009
+    src: R01
+    dst: R07
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D010
+    src: R02
+    dst: R07
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D011
+    src: R01
+    dst: R08
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D012
+    src: R02
+    dst: R08
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D013
+    src: R01
+    dst: R09
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D014
+    src: R02
+    dst: R09
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D015
+    src: R03
+    dst: R10
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D016
+    src: R04
+    dst: R10
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D017
+    src: R05
+    dst: R10
+    endpoint_type: smf_lc_duplex
+    count: 10
+  - id: D018
+    src: R06
+    dst: R09
+    endpoint_type: smf_lc_duplex
+    count: 10
+
+  # MMF LC duplex (30 / 200 = 15%)
+  - id: D019
+    src: R03
+    dst: R06
+    endpoint_type: mmf_lc_duplex
+    count: 6
+  - id: D020
+    src: R03
+    dst: R07
+    endpoint_type: mmf_lc_duplex
+    count: 6
+  - id: D021
+    src: R04
+    dst: R08
+    endpoint_type: mmf_lc_duplex
+    count: 6
+  - id: D022
+    src: R04
+    dst: R09
+    endpoint_type: mmf_lc_duplex
+    count: 6
+  - id: D023
+    src: R05
+    dst: R10
+    endpoint_type: mmf_lc_duplex
+    count: 6
+
+  # UTP RJ45 (20 / 200 = 10%)
+  - id: D024
+    src: R06
+    dst: R10
+    endpoint_type: utp_rj45
+    count: 4
+  - id: D025
+    src: R07
+    dst: R10
+    endpoint_type: utp_rj45
+    count: 4
+  - id: D026
+    src: R08
+    dst: R10
+    endpoint_type: utp_rj45
+    count: 4
+  - id: D027
+    src: R09
+    dst: R10
+    endpoint_type: utp_rj45
+    count: 4
+  - id: D028
+    src: R05
+    dst: R06
+    endpoint_type: utp_rj45
+    count: 4
+
+settings:
+  fixed_profiles:
+    lc_demands:
+      trunk_polarity: A
+      breakout_module_variant: AF
+    mpo_e2e:
+      trunk_polarity: B
+      pass_through_variant: A
+  ordering:
+    slot_category_priority: [mpo_e2e, lc_mmf, lc_smf, utp]
+    peer_sort: natural_trailing_digits
+  panel:
+    slots_per_u: 4
+    allocation_direction: top_down
+    u_label_mode: ascending
