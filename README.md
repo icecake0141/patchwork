@@ -233,7 +233,13 @@ can customize those files if you need to adjust the UI styling or layout.
 ### Documentation
 - `docs/` contains API and quick-start references.
 - `examples/quick-start/README.md` provides a step-by-step sample workflow.
-- `docs/onboarding/README.en.md` and `docs/onboarding/README.ja.md` provide first-time user input/output walkthroughs with 2-rack and 4-rack patterns.
+- Onboarding guides:
+  - [English onboarding guide](docs/onboarding/README.en.md)
+  - [日本語オンボーディングガイド](docs/onboarding/README.ja.md)
+  - [Simple 2-rack scenario (EN)](docs/onboarding/scenarios/simple-2rack.en.md)
+  - [シンプルな2ラック構成 (JA)](docs/onboarding/scenarios/simple-2rack.ja.md)
+  - [Mixed 4-rack scenario (EN)](docs/onboarding/scenarios/mixed-4rack.en.md)
+  - [混在メディアの4ラック構成 (JA)](docs/onboarding/scenarios/mixed-4rack.ja.md)
 
 ### Contributing
 Thank you for considering a contribution!
@@ -446,7 +452,13 @@ UI の見た目や構成を変更したい場合はこれらのファイルを�
 ### ドキュメント
 - `docs/` に API とクイックスタートの資料があります。
 - `examples/quick-start/README.md` にサンプル手順があります。
-- `docs/onboarding/README.en.md` と `docs/onboarding/README.ja.md` に、初見ユーザ向けの入出力ウォークスルー（2ラック/4ラック）があります。
+- オンボーディングガイド:
+  - [English onboarding guide](docs/onboarding/README.en.md)
+  - [日本語オンボーディングガイド](docs/onboarding/README.ja.md)
+  - [Simple 2-rack scenario (EN)](docs/onboarding/scenarios/simple-2rack.en.md)
+  - [シンプルな2ラック構成 (JA)](docs/onboarding/scenarios/simple-2rack.ja.md)
+  - [Mixed 4-rack scenario (EN)](docs/onboarding/scenarios/mixed-4rack.en.md)
+  - [混在メディアの4ラック構成 (JA)](docs/onboarding/scenarios/mixed-4rack.ja.md)
 
 ### コントリビュート
 貢献ありがとうございます。
