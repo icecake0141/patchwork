@@ -10,13 +10,12 @@ Place onboarding screenshots under this directory.
 
 ## Suggested structure
 
+- `upload-page.png` (shared across scenarios)
 - `simple-2rack/`
-  - `upload-page.png`
   - `project-detail.png`
   - `integrated-aggregate.png`
   - `integrated-detailed.png`
 - `mixed-4rack/`
-  - `upload-page.png`
   - `project-detail.png`
   - `integrated-aggregate.png`
   - `integrated-detailed.png`

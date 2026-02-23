@@ -51,7 +51,7 @@ Demonstrate a slightly larger topology with multiple peers and media.
 ## Screenshots (optional)
 - Upload page
 
-![Mixed 4-rack upload page](../images/mixed-4rack/upload-page.png)
+![Mixed 4-rack upload page](../images/upload-page.png)
 
 - Project detail page
 

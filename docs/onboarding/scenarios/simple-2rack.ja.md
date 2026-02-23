@@ -50,7 +50,7 @@ Review required for correctness, security, and licensing.
 ## スクリーンショット（任意）
 - Upload 画面
 
-![シンプル2ラック Upload 画面](../images/simple-2rack/upload-page.png)
+![シンプル2ラック Upload 画面](../images/upload-page.png)
 
 - Project detail 画面
 

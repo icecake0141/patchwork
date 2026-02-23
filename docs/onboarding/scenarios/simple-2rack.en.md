@@ -50,7 +50,7 @@ Use the smallest practical topology to understand input/output mapping.
 ## Screenshots (optional)
 - Upload page
 
-![Simple 2-rack upload page](../images/simple-2rack/upload-page.png)
+![Simple 2-rack upload page](../images/upload-page.png)
 
 - Project detail page
 
