@@ -6,7 +6,14 @@ import copy
 
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import integrated_wiring_svg, wiring_svg
+from services.export import (
+    integrated_wiring_drawio,
+    integrated_wiring_svg,
+    rack_occupancy_drawio,
+    svg_to_drawio,
+    wiring_drawio,
+    wiring_svg,
+)
 
 
 def test_wiring_svg_contains_expected_labels() -> None:
@@ -196,3 +203,93 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert "Rear" in detailed_svg
     assert "P1→P1" in detailed_svg
     assert "P1→P1" in aggregate_svg
+
+
+def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">'
+        '<rect x="10" y="20" width="50" height="30" fill="#ffffff" stroke="#000000"/>'
+        '<line x1="20" y1="80" x2="120" y2="80" stroke="#ff0000" stroke-width="2"/>'
+        '<text x="30" y="40" font-size="12" fill="#111111">Hello</text>'
+        "</svg>"
+    )
+    drawio = svg_to_drawio(svg, page_name="Test Wiring")
+
+    assert drawio.startswith('<mxfile host="app.diagrams.net"')
+    assert 'name="Test Wiring"' in drawio
+    assert "<mxGraphModel" in drawio
+    assert "shape=rectangle;" in drawio
+    assert "edgeStyle=none;" in drawio
+    assert "Hello" in drawio
+    assert "data:image/svg+xml," not in drawio
+
+
+def test_wiring_drawio_contains_encoded_wiring_svg() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "wiring-drawio"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+        }
+    )
+    result = allocate(project)
+
+    drawio = wiring_drawio(result)
+
+    assert '<diagram id="wiring" name="Cable Wiring">' in drawio
+    assert "Cable Wiring Diagram" in drawio
+    assert "shape=rectangle;" in drawio
+    assert "edgeStyle=none;" in drawio
+
+
+def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-drawio"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 1,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+
+    drawio = integrated_wiring_drawio(result)
+
+    assert drawio.startswith('<mxfile host="app.diagrams.net"')
+    assert 'name="Integrated Wiring (Aggregate)"' in drawio
+    assert 'name="Integrated Wiring (Detailed)"' in drawio
+    assert drawio.count("<diagram ") >= 2
+    assert "curved=1;" in drawio
+
+
+def test_rack_occupancy_drawio_is_combined_into_single_page() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "rack-drawio"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+        }
+    )
+    result = allocate(project)
+
+    drawio = rack_occupancy_drawio(result)
+
+    assert drawio.startswith('<mxfile host="app.diagrams.net"')
+    assert 'name="Rack Occupancy"' in drawio
+    assert drawio.count("<diagram ") == 1
+    assert "Rack R1 Panel Occupancy" in drawio
+    assert "Rack R2 Panel Occupancy" in drawio

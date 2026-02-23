@@ -7,9 +7,13 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from html import escape
 from typing import Any
+
+from services.render_svg import render_rack_panels_svg
 
 SESSION_COLUMNS = [
     "project_id",
@@ -474,3 +478,262 @@ def integrated_wiring_svg(
     lines.append("</g>")
     lines.append("</svg>")
     return "".join(lines)
+
+
+def _svg_length_to_float(value: str | None, default: float) -> float:
+    if value is None:
+        return default
+    text = str(value).strip()
+    if not text:
+        return default
+    cleaned = text.replace("px", "")
+    if cleaned.endswith("%"):
+        return default
+    try:
+        return float(cleaned)
+    except ValueError:
+        return default
+
+
+def _tag_name(xml_tag: str) -> str:
+    if "}" in xml_tag:
+        return xml_tag.rsplit("}", 1)[1]
+    return xml_tag
+
+
+def _parse_svg_path_cubic(path_d: str) -> tuple[float, float, float, float, float, float, float, float] | None:
+    """Parse a simple SVG cubic path: M x1 y1 C c1x c1y, c2x c2y, x2 y2."""
+    tokens = re.findall(r"[A-Za-z]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", path_d)
+    if len(tokens) < 10:
+        return None
+    if tokens[0] != "M" or tokens[3] != "C":
+        return None
+    try:
+        x1 = float(tokens[1])
+        y1 = float(tokens[2])
+        c1x = float(tokens[4])
+        c1y = float(tokens[5])
+        c2x = float(tokens[6])
+        c2y = float(tokens[7])
+        x2 = float(tokens[8])
+        y2 = float(tokens[9])
+    except ValueError:
+        return None
+    return (x1, y1, c1x, c1y, c2x, c2y, x2, y2)
+
+
+def _svg_to_mx_graph_model(svg_text: str) -> str:
+    root = ET.fromstring(svg_text)
+    width = _svg_length_to_float(root.get("width"), 1280.0)
+    height = _svg_length_to_float(root.get("height"), 720.0)
+
+    lines = [
+        f'<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="{int(width + 120)}" pageHeight="{int(height + 120)}" math="0" shadow="0">',
+        "<root>",
+        '<mxCell id="0"/>',
+        '<mxCell id="1" parent="0"/>',
+    ]
+
+    next_id = 2
+
+    for element in root.iter():
+        tag = _tag_name(element.tag)
+        if tag == "rect":
+            x = _svg_length_to_float(element.get("x"), 0.0)
+            y = _svg_length_to_float(element.get("y"), 0.0)
+            rect_w = _svg_length_to_float(element.get("width"), 0.0)
+            rect_h = _svg_length_to_float(element.get("height"), 0.0)
+            fill = element.get("fill", "none")
+            stroke = element.get("stroke", "none")
+            style = (
+                "shape=rectangle;whiteSpace=wrap;html=1;rounded=0;"
+                f"fillColor={fill};strokeColor={stroke};"
+            )
+            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">')
+            lines.append(
+                f'<mxGeometry x="{x:.2f}" y="{y:.2f}" width="{rect_w:.2f}" height="{rect_h:.2f}" as="geometry"/>'
+            )
+            lines.append("</mxCell>")
+            next_id += 1
+            continue
+
+        if tag == "line":
+            x1 = _svg_length_to_float(element.get("x1"), 0.0)
+            y1 = _svg_length_to_float(element.get("y1"), 0.0)
+            x2 = _svg_length_to_float(element.get("x2"), 0.0)
+            y2 = _svg_length_to_float(element.get("y2"), 0.0)
+            stroke = element.get("stroke", "#1f2937")
+            stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
+            style = (
+                "edgeStyle=none;html=1;rounded=0;"
+                f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
+                "endArrow=none;startArrow=none;"
+            )
+            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">')
+            lines.append('<mxGeometry relative="1" as="geometry">')
+            lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
+            lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
+            lines.append("</mxGeometry>")
+            lines.append("</mxCell>")
+            next_id += 1
+            continue
+
+        if tag == "path":
+            path_d = element.get("d", "")
+            parsed = _parse_svg_path_cubic(path_d)
+            if parsed is None:
+                continue
+            x1, y1, c1x, c1y, c2x, c2y, x2, y2 = parsed
+            stroke = element.get("stroke", "#1f2937")
+            stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
+            style = (
+                "edgeStyle=none;curved=1;html=1;rounded=0;"
+                f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
+                "endArrow=none;startArrow=none;"
+            )
+            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">')
+            lines.append('<mxGeometry relative="1" as="geometry">')
+            lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
+            lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
+            lines.append("<Array as=\"points\">")
+            lines.append(f'<mxPoint x="{c1x:.2f}" y="{c1y:.2f}"/>')
+            lines.append(f'<mxPoint x="{c2x:.2f}" y="{c2y:.2f}"/>')
+            lines.append("</Array>")
+            lines.append("</mxGeometry>")
+            lines.append("</mxCell>")
+            next_id += 1
+            continue
+
+        if tag == "text":
+            text_value = "".join(element.itertext()).strip()
+            if not text_value:
+                continue
+            x = _svg_length_to_float(element.get("x"), 0.0)
+            y = _svg_length_to_float(element.get("y"), 0.0)
+            font_size = _svg_length_to_float(element.get("font-size"), 12.0)
+            fill = element.get("fill", "#111827")
+            font_family = element.get("font-family", "Arial")
+            weight = element.get("font-weight", "normal")
+            font_style = "1" if str(weight).lower() == "bold" else "0"
+            text_w = max(40.0, len(text_value) * font_size * 0.62)
+            text_h = max(14.0, font_size * 1.35)
+            style = (
+                "text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;"
+                f"fontSize={font_size:.0f};fontColor={fill};fontFamily={font_family};fontStyle={font_style};"
+            )
+            lines.append(
+                f'<mxCell id="{next_id}" value="{escape(text_value, quote=True)}" style="{escape(style, quote=True)}" vertex="1" parent="1">'
+            )
+            lines.append(
+                f'<mxGeometry x="{x:.2f}" y="{max(0.0, y - text_h + 2):.2f}" width="{text_w:.2f}" height="{text_h:.2f}" as="geometry"/>'
+            )
+            lines.append("</mxCell>")
+            next_id += 1
+            continue
+
+        if tag == "circle":
+            cx = _svg_length_to_float(element.get("cx"), 0.0)
+            cy = _svg_length_to_float(element.get("cy"), 0.0)
+            radius = _svg_length_to_float(element.get("r"), 0.0)
+            fill = element.get("fill", "none")
+            stroke = element.get("stroke", "none")
+            d = radius * 2
+            style = f"shape=ellipse;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
+            lines.append(f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" vertex="1" parent="1">')
+            lines.append(
+                f'<mxGeometry x="{cx - radius:.2f}" y="{cy - radius:.2f}" width="{d:.2f}" height="{d:.2f}" as="geometry"/>'
+            )
+            lines.append("</mxCell>")
+            next_id += 1
+
+    lines.extend([
+        "</root>",
+        "</mxGraphModel>",
+    ])
+    return "".join(lines)
+
+
+def svg_to_drawio(svg_text: str, page_name: str = "Wiring") -> str:
+    """Convert SVG text to editable Draw.io (.drawio) XML.
+
+    Supported SVG primitives are mapped into Draw.io cells so that
+    shapes and labels remain directly editable after import.
+    """
+    page_name_escaped = escape(page_name, quote=True)
+    graph_model = _svg_to_mx_graph_model(svg_text)
+    return (
+        '<mxfile host="app.diagrams.net" modified="2026-02-23T00:00:00Z" agent="patchwork" version="22.1.0">'
+        f'<diagram id="wiring" name="{page_name_escaped}">{graph_model}</diagram>'
+        "</mxfile>"
+    )
+
+
+def svgs_to_drawio(pages: list[tuple[str, str]]) -> str:
+    """Build a multi-page Draw.io document from SVG pages."""
+    diagrams = []
+    for index, (page_name, svg_text) in enumerate(pages, start=1):
+        page_name_escaped = escape(page_name, quote=True)
+        graph_model = _svg_to_mx_graph_model(svg_text)
+        diagrams.append(f'<diagram id="page_{index}" name="{page_name_escaped}">{graph_model}</diagram>')
+
+    return (
+        '<mxfile host="app.diagrams.net" modified="2026-02-23T00:00:00Z" agent="patchwork" version="22.1.0">'
+        + "".join(diagrams)
+        + "</mxfile>"
+    )
+
+
+def wiring_drawio(result: dict[str, Any]) -> str:
+    """Build a Draw.io file from the generated wiring SVG."""
+    return svg_to_drawio(wiring_svg(result), page_name="Cable Wiring")
+
+
+def integrated_wiring_drawio(result: dict[str, Any]) -> str:
+    """Build a multi-page Draw.io file for Integrated Wiring View modes."""
+    pages = [
+        ("Integrated Wiring (Aggregate)", integrated_wiring_svg(result, mode="aggregate")),
+        ("Integrated Wiring (Detailed)", integrated_wiring_svg(result, mode="detailed")),
+    ]
+    return svgs_to_drawio(pages)
+
+
+def rack_occupancy_drawio(result: dict[str, Any]) -> str:
+    """Build a single-page Draw.io file for Rack Occupancy across all racks."""
+    rack_ids = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
+    if not rack_ids:
+        return svg_to_drawio(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="120"><text x="16" y="48" font-size="16" fill="#111827">No rack occupancy data available</text></svg>',
+            page_name="Rack Occupancy",
+        )
+
+    rack_svgs = [render_rack_panels_svg(result, rack_id) for rack_id in rack_ids]
+    parsed_roots = [ET.fromstring(svg_text) for svg_text in rack_svgs]
+    rack_sizes = [
+        (
+            _svg_length_to_float(root.get("width"), 900.0),
+            _svg_length_to_float(root.get("height"), 300.0),
+        )
+        for root in parsed_roots
+    ]
+
+    gap = 40.0
+    margin = 20.0
+    total_width = margin * 2 + sum(width for width, _ in rack_sizes) + gap * max(0, len(rack_sizes) - 1)
+    total_height = margin * 2 + max((height for _, height in rack_sizes), default=200.0)
+
+    chunks = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{total_width:.0f}" height="{total_height:.0f}" viewBox="0 0 {total_width:.0f} {total_height:.0f}">',
+        '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>',
+    ]
+
+    cursor_x = margin
+    for svg_text, (rack_w, _rack_h) in zip(rack_svgs, rack_sizes, strict=False):
+        start_index = svg_text.find(">")
+        end_index = svg_text.rfind("</svg>")
+        inner = svg_text[start_index + 1 : end_index] if start_index != -1 and end_index != -1 else ""
+        chunks.append(f'<g transform="translate({cursor_x:.1f},{margin:.1f})">{inner}</g>')
+        cursor_x += rack_w + gap
+
+    chunks.append("</svg>")
+    combined_svg = "".join(chunks)
+    return svg_to_drawio(combined_svg, page_name="Rack Occupancy")

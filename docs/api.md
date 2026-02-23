@@ -41,6 +41,15 @@ This document describes the interfaces and allocation behavior implemented in th
 - `GET /revisions/<revision_id>/export/wiring.svg`
   - Exports wiring SVG.
 
+- `GET /revisions/<revision_id>/export/wiring.drawio`
+  - Exports Draw.io XML converted from wiring SVG.
+
+- `GET /revisions/<revision_id>/export/integrated_wiring.drawio`
+  - Exports Draw.io XML containing Integrated Wiring View (Aggregate/Detailed pages).
+
+- `GET /revisions/<revision_id>/export/rack_occupancy.drawio`
+  - Exports Draw.io XML containing a single combined Rack Occupancy sheet.
+
 - `GET /diff/<project_id>?rev1=<id>&rev2=<id>`
   - Compares two revisions (logical + physical views).
 
@@ -200,6 +209,15 @@ See `examples/quick-start` for end-to-end examples.
 
 - `GET /revisions/<revision_id>/export/wiring.svg`
   - 配線 SVG を出力します。
+
+- `GET /revisions/<revision_id>/export/wiring.drawio`
+  - 配線 SVG から変換した Draw.io XML を出力します。
+
+- `GET /revisions/<revision_id>/export/integrated_wiring.drawio`
+  - Integrated Wiring View（Aggregate/Detailed 2 ページ）を含む Draw.io XML を出力します。
+
+- `GET /revisions/<revision_id>/export/rack_occupancy.drawio`
+  - Rack Occupancy（全ラックを 1 シートでまとめた）Draw.io XML を出力します。
 
 - `GET /diff/<project_id>?rev1=<id>&rev2=<id>`
   - 2 つのリビジョンを比較します（論理 + 物理ビュー）。

@@ -16,7 +16,16 @@ from yaml import YAMLError
 from db import Database
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import bom_csv, integrated_wiring_svg, result_json, sessions_csv, wiring_svg
+from services.export import (
+    bom_csv,
+    integrated_wiring_svg,
+    integrated_wiring_drawio,
+    rack_occupancy_drawio,
+    result_json,
+    sessions_csv,
+    wiring_drawio,
+    wiring_svg,
+)
 from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
 
 
@@ -208,6 +217,49 @@ def create_app() -> Flask:
             svg_text,
             mimetype="image/svg+xml",
             headers={"Content-Disposition": f"attachment; filename={revision_id}_wiring.svg"},
+        )
+
+    @app.get("/revisions/<revision_id>/export/wiring.drawio")
+    def export_wiring_drawio(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        drawio_text = wiring_drawio(result)
+        return Response(
+            drawio_text,
+            mimetype="application/xml",
+            headers={"Content-Disposition": f"attachment; filename={revision_id}_wiring.drawio"},
+        )
+
+    @app.get("/revisions/<revision_id>/export/integrated_wiring.drawio")
+    def export_integrated_wiring_drawio(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        drawio_text = integrated_wiring_drawio(result)
+        return Response(
+            drawio_text,
+            mimetype="application/xml",
+            headers={
+                "Content-Disposition": f"attachment; filename={revision_id}_integrated_wiring.drawio"
+            },
+        )
+
+    @app.get("/revisions/<revision_id>/export/rack_occupancy.drawio")
+    def export_rack_occupancy_drawio(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        result = json.loads(rev["result_json"])
+        drawio_text = rack_occupancy_drawio(result)
+        return Response(
+            drawio_text,
+            mimetype="application/xml",
+            headers={
+                "Content-Disposition": f"attachment; filename={revision_id}_rack_occupancy.drawio"
+            },
         )
 
     @app.get("/diff/<project_id>")

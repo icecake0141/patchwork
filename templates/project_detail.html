@@ -24,6 +24,9 @@
 		<a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">Export bom.csv</a>
 		<a href="/revisions/{{ chosen.revision_id }}/export/result.json">Export result.json</a>
 		<a href="/revisions/{{ chosen.revision_id }}/export/wiring.svg">Export wiring.svg</a>
+		<a href="/revisions/{{ chosen.revision_id }}/export/wiring.drawio">Export wiring.drawio</a>
+		<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring.drawio">Export integrated_wiring.drawio</a>
+		<a href="/revisions/{{ chosen.revision_id }}/export/rack_occupancy.drawio">Export rack_occupancy.drawio</a>
 	</div>
 	<p>Sessions: {{ result.metrics.session_count }} / Modules: {{ result.metrics.module_count }}</p>
 </div>

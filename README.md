@@ -165,7 +165,7 @@ Fixed profile behavior:
 
 ### Output files
 
-After allocation Patchwork produces three downloadable files:
+After allocation Patchwork produces downloadable files:
 
 | File           | Description |
 |----------------|-------------|
@@ -173,6 +173,9 @@ After allocation Patchwork produces three downloadable files:
 | `bom.csv`      | Bill of Materials: panels, modules, and cables with quantities. |
 | `result.json`  | Full structured allocation result (panels, modules, cables, sessions, metrics). |
 | `wiring.svg`   | Visual cable wiring diagram (one line per cable, with source/destination panel positions). |
+| `wiring.drawio`| Draw.io XML (`.drawio`) converted from `wiring.svg` for diagrams.net import/edit workflows. |
+| `integrated_wiring.drawio` | Draw.io XML with 2 pages: Integrated Wiring `Aggregate` and `Detailed`. |
+| `rack_occupancy.drawio` | Draw.io XML with a single sheet combining all racks in Rack Occupancy view. |
 
 The Trial and Project detail pages also include an **Integrated Wiring View** for interactive
 inspection. This view is rendered in-page (not a replacement for `wiring.svg`) and supports:
@@ -374,13 +377,16 @@ demands:
 
 ### 出力ファイル
 
-割り当て完了後、3 つのファイルをダウンロードできます。
+割り当て完了後、以下のファイルをダウンロードできます。
 
 | ファイル        | 説明 |
 |----------------|------|
 | `sessions.csv` | ポートごとのパッチ配線スケジュール（1 行 = 1 接続）。 |
 | `bom.csv`      | 部材表：パネル・モジュール・ケーブルの種別と数量。 |
 | `result.json`  | 全割り当て結果の構造化 JSON（パネル、モジュール、ケーブル、セッション、メトリクス）。 |
+| `wiring.drawio`| `wiring.svg` から変換した Draw.io XML（`.drawio`）。diagrams.net で読み込み・編集可能。 |
+| `integrated_wiring.drawio` | Integrated Wiring の `Aggregate` / `Detailed` を 2 ページで含む Draw.io XML。 |
+| `rack_occupancy.drawio` | Rack Occupancy を全ラックまとめて 1 シートで含む Draw.io XML。 |
 
 Trial / Project detail 画面には、`wiring.svg` を置き換えない追加機能として
 **Integrated Wiring View** が表示されます。主な操作:

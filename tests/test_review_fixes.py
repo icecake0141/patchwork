@@ -201,6 +201,56 @@ def test_upload_stores_only_trial_id_in_session(tmp_path) -> None:
         assert not any(str(k).startswith("trial:") for k in sess.keys())
 
 
+def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
+    from db import Database
+
+    db_path = str(tmp_path / "t.db")
+    _ = _make_client(db_path)
+
+    payload = {
+        "version": 1,
+        "project": {"name": "drawio-export"},
+        "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+        "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+    }
+    result = allocate(ProjectInput.model_validate(payload))
+
+    db = Database(db_path)
+    project_id, revision_id = db.save_revision(
+        project_name="drawio-export",
+        note="",
+        input_yaml="version: 1\n",
+        result=result,
+    )
+    assert project_id
+
+    client = _make_client(db_path)
+    resp = client.get(f"/revisions/{revision_id}/export/wiring.drawio")
+
+    assert resp.status_code == 200
+    assert resp.mimetype == "application/xml"
+    assert "attachment;" in resp.headers.get("Content-Disposition", "")
+    assert resp.data.startswith(b"<mxfile ")
+    assert b"Cable Wiring Diagram" in resp.data
+    assert b"shape=rectangle;" in resp.data
+    assert b"edgeStyle=none;" in resp.data
+
+    resp_integrated = client.get(f"/revisions/{revision_id}/export/integrated_wiring.drawio")
+    assert resp_integrated.status_code == 200
+    assert resp_integrated.mimetype == "application/xml"
+    assert b'Integrated Wiring (Aggregate)' in resp_integrated.data
+    assert b'Integrated Wiring (Detailed)' in resp_integrated.data
+    assert b"curved=1;" in resp_integrated.data
+
+    resp_rack = client.get(f"/revisions/{revision_id}/export/rack_occupancy.drawio")
+    assert resp_rack.status_code == 200
+    assert resp_rack.mimetype == "application/xml"
+    assert b'name="Rack Occupancy"' in resp_rack.data
+    assert resp_rack.data.count(b"<diagram ") == 1
+    assert b"Rack R1 Panel Occupancy" in resp_rack.data
+    assert b"Rack R2 Panel Occupancy" in resp_rack.data
+
+
 # ---------------------------------------------------------------------------
 # pair_details JSON round-trip (Bug: SlotRef was not JSON-serialisable)
 # ---------------------------------------------------------------------------
