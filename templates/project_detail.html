@@ -19,27 +19,27 @@
 {% if chosen %}
 <div class="card">
 	<h2>Revision {{ chosen.revision_id }}</h2>
-	<p class="muted">ダウンロードは内容ごとにまとめています。同じ行の SVG / Draw.io は同一内容の別形式です。</p>
+	<p class="muted">Downloads are grouped by content. SVG and Draw.io in the same row represent the same content in different formats.</p>
 	<table>
 	<tr><th>group</th><th>description</th><th>downloads</th></tr>
 	<tr>
 		<td>Raw Data</td>
-		<td>配線セッションの明細データ（表形式）。</td>
+		<td>Detailed cabling session data in tabular format.</td>
 		<td><a href="/revisions/{{ chosen.revision_id }}/export/sessions.csv">sessions.csv</a></td>
 	</tr>
 	<tr>
 		<td>Raw Data</td>
-		<td>部材集計（BoM）の一覧データ。</td>
+		<td>Bill of Materials (BoM) summary list.</td>
 		<td><a href="/revisions/{{ chosen.revision_id }}/export/bom.csv">bom.csv</a></td>
 	</tr>
 	<tr>
 		<td>Raw Data</td>
-		<td>割当結果全体のJSONデータ。</td>
+		<td>Complete allocation result in JSON format.</td>
 		<td><a href="/revisions/{{ chosen.revision_id }}/export/result.json">result.json</a></td>
 	</tr>
 	<tr>
 		<td>Cable Wiring Diagram</td>
-		<td>ケーブル配線図（接続詳細）。</td>
+		<td>Cable wiring diagram with detailed connections.</td>
 		<td>
 			<a href="/revisions/{{ chosen.revision_id }}/export/wiring.svg">SVG</a>
 			 /
@@ -48,12 +48,12 @@
 	</tr>
 	<tr>
 		<td>Integrated Wiring View</td>
-		<td>統合配線ビュー（Aggregate/Detailed を含む構成）。</td>
+		<td>Integrated wiring view including Aggregate and Detailed modes.</td>
 		<td><a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring.drawio">Draw.io</a></td>
 	</tr>
 	<tr>
 		<td>Integrated Wiring View (Interactive)</td>
-		<td>フィルタ付きの統合配線ビュー（単体SVG）。</td>
+		<td>Integrated wiring SVG with built-in interactive filters.</td>
 		<td>
 			<a href="/revisions/{{ chosen.revision_id }}/export/integrated_wiring_interactive.svg?mode=aggregate">SVG (Aggregate)</a>
 			 /
@@ -62,7 +62,7 @@
 	</tr>
 	<tr>
 		<td>Rack Occupancy</td>
-		<td>ラック占有図（全ラックを1シートで出力）。</td>
+		<td>Rack occupancy diagram exported as a single-sheet view.</td>
 		<td><a href="/revisions/{{ chosen.revision_id }}/export/rack_occupancy.drawio">Draw.io</a></td>
 	</tr>
 	</table>
