@@ -786,7 +786,7 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             style = (
                 "edgeStyle=none;html=1;rounded=0;"
                 f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
-                "endArrow=none;startArrow=none;"
+                "endArrow=none;startArrow=none;jumpStyle=arc;jumpSize=6;"
             )
             lines.append(
                 f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
@@ -816,7 +816,7 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
                 style = (
                     "edgeStyle=none;curved=1;html=1;rounded=0;"
                     f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
-                    "endArrow=none;startArrow=none;"
+                    "endArrow=none;startArrow=none;jumpStyle=arc;jumpSize=6;"
                 )
                 lines.append(
                     f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'

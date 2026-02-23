@@ -291,6 +291,8 @@ def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
     assert "<mxGraphModel" in drawio
     assert "shape=rectangle;" in drawio
     assert "edgeStyle=none;" in drawio
+    assert "jumpStyle=arc;" in drawio
+    assert "jumpSize=6;" in drawio
     assert "Hello" in drawio
     assert "data:image/svg+xml," not in drawio
 
@@ -326,6 +328,7 @@ def test_wiring_drawio_contains_encoded_wiring_svg() -> None:
     assert "Cable Wiring Diagram" in drawio
     assert "shape=rectangle;" in drawio
     assert "edgeStyle=none;" in drawio
+    assert "jumpStyle=arc;" in drawio
 
 
 def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> None:
@@ -354,6 +357,7 @@ def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> Non
     assert 'name="Integrated Wiring (Detailed)"' in drawio
     assert drawio.count("<diagram ") >= 2
     assert "curved=1;" in drawio
+    assert "jumpStyle=arc;" in drawio
 
 
 def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
