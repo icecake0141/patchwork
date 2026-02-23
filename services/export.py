@@ -650,6 +650,7 @@ def integrated_wiring_svg(
                 (rack_id, u_value, slot_value),
                 _media_layout_profile(""),
             )
+            slot_module_type = module_type_by_slot.get((rack_id, u_value, slot_value), "empty")
             slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
             slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
             if shown_ports == 0:
@@ -659,7 +660,7 @@ def integrated_wiring_svg(
             else:
                 slot_state = "partial"
             slot_theme = _slot_state_theme(
-                module_type_by_slot.get((rack_id, u_value, slot_value), "empty"),
+                slot_module_type,
                 slot_state,
             )
 
@@ -708,35 +709,116 @@ def integrated_wiring_svg(
 
             mapping_y = box_y + slot_inner_top + 6
             ordered_ports = _ordered_ports_for_layout(slot_layout_profile, slot_capacity)
+            front_anchor_w = 14.0
+            front_anchor_h = 8.0
+            front_inner_edge_x = (
+                front_x + (front_anchor_w / 2.0) if front_x < rear_x else front_x - (front_anchor_w / 2.0)
+            )
+
+            port_row_y = {
+                int(port): mapping_y + idx * mapping_row_h for idx, port in enumerate(ordered_ports)
+            }
+            mpo_group_anchor_y: dict[int, float] = {}
+            rear_anchor_w_by_port: dict[int, float] = {}
+            rear_outer_edge_x_by_port: dict[int, float] = {}
+            rear_inner_edge_x_by_port: dict[int, float] = {}
+
+            if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex":
+                mpo_groups = {
+                    1: [port for port in ordered_ports if int(port) <= 6],
+                    2: [port for port in ordered_ports if int(port) >= 7],
+                }
+                mpo_anchor_w = 22.0
+                mpo_anchor_h = 10.0
+                for mpo_index, group_ports in mpo_groups.items():
+                    if not group_ports:
+                        continue
+                    anchor_y = (
+                        sum((port_row_y[int(port)] - 3.0) for port in group_ports) / len(group_ports)
+                    )
+                    mpo_group_anchor_y[mpo_index] = anchor_y
+                    mpo_inner_edge_x = (
+                        rear_x - (mpo_anchor_w / 2.0)
+                        if rear_x > front_x
+                        else rear_x + (mpo_anchor_w / 2.0)
+                    )
+                    mpo_outer_edge_x = (
+                        rear_x + (mpo_anchor_w / 2.0)
+                        if rear_x > front_x
+                        else rear_x - (mpo_anchor_w / 2.0)
+                    )
+                    node_lines.append(
+                        f'<rect x="{rear_x - mpo_anchor_w / 2}" y="{anchor_y - mpo_anchor_h / 2}" width="{mpo_anchor_w}" height="{mpo_anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="0.95" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="occupied" data-port-anchor="rear"/>'
+                    )
+                    node_lines.append(
+                        f'<line x1="{rear_x - mpo_anchor_w / 2 + 1.0}" y1="{anchor_y - 1.4}" x2="{rear_x + mpo_anchor_w / 2 - 1.0}" y2="{anchor_y + 1.9}" stroke="{slot_theme["lane"]}" stroke-width="0.6" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="occupied"/>'
+                    )
+                    node_lines.append(
+                        f'<text x="{rear_x}" y="{anchor_y + 2.4}" font-size="6.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-anchor-port-label="1">MPO{mpo_index}</text>'
+                    )
+                    p_range_text = "P1-P6" if mpo_index == 1 else "P7-P12"
+                    node_lines.append(
+                        f'<text x="{rear_x}" y="{anchor_y + 7.0}" font-size="5.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-anchor-port-label="1">{p_range_text}</text>'
+                    )
+                    for port in group_ports:
+                        port_key = int(port)
+                        rear_anchor_w_by_port[port_key] = mpo_anchor_w
+                        rear_outer_edge_x_by_port[port_key] = mpo_outer_edge_x
+                        rear_inner_edge_x_by_port[port_key] = mpo_inner_edge_x
+                        slot_anchor_positions[(rack_id, u_value, slot_value, port_key)] = (
+                            mpo_outer_edge_x,
+                            anchor_y,
+                        )
+            else:
+                rear_anchor_w = 14.0
+                rear_inner_edge_x = (
+                    rear_x - (rear_anchor_w / 2.0) if rear_x > front_x else rear_x + (rear_anchor_w / 2.0)
+                )
+                rear_outer_edge_x = (
+                    rear_x + (rear_anchor_w / 2.0) if rear_x > front_x else rear_x - (rear_anchor_w / 2.0)
+                )
+                for port in ordered_ports:
+                    port_key = int(port)
+                    rear_anchor_w_by_port[port_key] = rear_anchor_w
+                    rear_outer_edge_x_by_port[port_key] = rear_outer_edge_x
+                    rear_inner_edge_x_by_port[port_key] = rear_inner_edge_x
+                    slot_anchor_positions[(rack_id, u_value, slot_value, port_key)] = (
+                        rear_outer_edge_x,
+                        port_row_y[port_key] - 3.0,
+                    )
+
             for idx, port in enumerate(ordered_ports):
                 row_y = mapping_y + idx * mapping_row_h
                 anchor_y = row_y - 3
                 port_state = "occupied" if port in ports_set else "free"
                 line_opacity = "1.0" if port_state == "occupied" else "0.30"
-                anchor_w = 14
-                anchor_h = 8
-                rear_snap_x = rear_x + (anchor_w / 2 if rear_dx > 0 else -anchor_w / 2)
-                slot_anchor_positions[(rack_id, u_value, slot_value, int(port))] = (
-                    rear_snap_x,
-                    anchor_y,
-                )
+                port_key = int(port)
+                rear_anchor_w = rear_anchor_w_by_port.get(port_key, 14.0)
+                rear_inner_edge_x = rear_inner_edge_x_by_port.get(port_key, rear_x)
                 node_lines.append(
-                    f'<rect x="{front_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_front_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
-                )
-                node_lines.append(
-                    f'<rect x="{rear_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
-                )
-                node_lines.append(
-                    f'<line x1="{rear_x - anchor_w / 2 + 1.0}" y1="{anchor_y - 1.1}" x2="{rear_x + anchor_w / 2 - 1.0}" y2="{anchor_y - 1.1}" stroke="{slot_theme["lane"]}" stroke-width="0.5" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}"/>'
+                    f'<rect x="{front_x - front_anchor_w / 2}" y="{anchor_y - front_anchor_h / 2}" width="{front_anchor_w}" height="{front_anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_front_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
                 )
                 node_lines.append(
                     f'<text x="{front_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'
                 )
-                node_lines.append(
-                    f'<text x="{rear_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'
+                if slot_module_type != "lc_breakout_2xmpo12_to_12xlcduplex":
+                    node_lines.append(
+                        f'<rect x="{rear_x - rear_anchor_w / 2}" y="{anchor_y - 4}" width="{rear_anchor_w}" height="8" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
+                    )
+                    node_lines.append(
+                        f'<line x1="{rear_x - rear_anchor_w / 2 + 1.0}" y1="{anchor_y - 1.1}" x2="{rear_x + rear_anchor_w / 2 - 1.0}" y2="{anchor_y + 1.6}" stroke="{slot_theme["lane"]}" stroke-width="0.5" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}"/>'
+                    )
+                    node_lines.append(
+                        f'<text x="{rear_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'
+                    )
+
+                rear_target_y = (
+                    mpo_group_anchor_y[1] if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and int(port) <= 6
+                    else mpo_group_anchor_y[2] if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and 7 <= int(port) <= 12
+                    else anchor_y
                 )
                 node_lines.append(
-                    f'<line x1="{front_x}" y1="{anchor_y}" x2="{rear_x}" y2="{anchor_y}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
+                    f'<line x1="{front_inner_edge_x}" y1="{anchor_y}" x2="{rear_inner_edge_x}" y2="{rear_target_y}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
                 )
         else:
             node_lines.append(
@@ -788,19 +870,75 @@ def integrated_wiring_svg(
                 }
             ]
         else:
-            rows = [
-                {
-                    "wire_id": str(session["session_id"]),
-                    "media": media,
-                    "src_port": int(session["src_port"]),
-                    "dst_port": int(session["dst_port"]),
-                    "port_text": f"P{session['src_port']}→P{session['dst_port']}",
-                    "src_port_text": f"P{session['src_port']}",
-                    "dst_port_text": f"P{session['dst_port']}",
-                    "label": f"P{session['src_port']}→P{session['dst_port']} #{cable_seq_map.get(session['cable_id'], '')}",
-                }
-                for session in sessions
-            ]
+            src_module_type = module_type_by_slot.get((src_rack, src_u, src_slot), "empty")
+            dst_module_type = module_type_by_slot.get((dst_rack, dst_u, dst_slot), "empty")
+            use_mpo_trunk_rows = (
+                media.endswith("lc_duplex")
+                and src_module_type == "lc_breakout_2xmpo12_to_12xlcduplex"
+                and dst_module_type == "lc_breakout_2xmpo12_to_12xlcduplex"
+            )
+
+            if use_mpo_trunk_rows:
+                mpo_groups: dict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+                for session in sessions:
+                    src_port = int(session["src_port"])
+                    dst_port = int(session["dst_port"])
+                    src_mpo = 1 if src_port <= 6 else 2
+                    dst_mpo = 1 if dst_port <= 6 else 2
+                    mpo_groups[(src_mpo, dst_mpo)].append(session)
+
+                rows = []
+                for (src_mpo, dst_mpo), mpo_sessions in sorted(mpo_groups.items()):
+                    if len(mpo_sessions) >= 6:
+                        src_anchor_port = 3 if src_mpo == 1 else 9
+                        dst_anchor_port = 3 if dst_mpo == 1 else 9
+                        trunk_count = len({str(s["cable_id"]) for s in mpo_sessions})
+                        rows.append(
+                            {
+                                "wire_id": (
+                                    f"{src_rack}-{src_u}-{src_slot}__{dst_rack}-{dst_u}-{dst_slot}"
+                                    f"__{media}__MPO{src_mpo}-{dst_mpo}"
+                                ),
+                                "media": media,
+                                "src_port": src_anchor_port,
+                                "dst_port": dst_anchor_port,
+                                "port_text": f"MPO{src_mpo}→MPO{dst_mpo}",
+                                "src_port_text": f"MPO{src_mpo}",
+                                "dst_port_text": f"MPO{dst_mpo}",
+                                "label": (
+                                    f"MPO{src_mpo}→MPO{dst_mpo} "
+                                    f"({len(mpo_sessions)}x LC duplex / {trunk_count} trunks)"
+                                ),
+                            }
+                        )
+                    else:
+                        rows.extend(
+                            {
+                                "wire_id": str(session["session_id"]),
+                                "media": media,
+                                "src_port": int(session["src_port"]),
+                                "dst_port": int(session["dst_port"]),
+                                "port_text": f"P{session['src_port']}→P{session['dst_port']}",
+                                "src_port_text": f"P{session['src_port']}",
+                                "dst_port_text": f"P{session['dst_port']}",
+                                "label": f"P{session['src_port']}→P{session['dst_port']} #{cable_seq_map.get(session['cable_id'], '')}",
+                            }
+                            for session in mpo_sessions
+                        )
+            else:
+                rows = [
+                    {
+                        "wire_id": str(session["session_id"]),
+                        "media": media,
+                        "src_port": int(session["src_port"]),
+                        "dst_port": int(session["dst_port"]),
+                        "port_text": f"P{session['src_port']}→P{session['dst_port']}",
+                        "src_port_text": f"P{session['src_port']}",
+                        "dst_port_text": f"P{session['dst_port']}",
+                        "label": f"P{session['src_port']}→P{session['dst_port']} #{cable_seq_map.get(session['cable_id'], '')}",
+                    }
+                    for session in sessions
+                ]
 
         total = len(rows)
         if total == 0:

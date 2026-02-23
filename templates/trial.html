@@ -94,12 +94,36 @@
     </fieldset>
   </div>
   <div class="integrated-legend">
+    <span class="integrated-legend-item"><strong>Wiring</strong></span>
     {% for media in integrated_media_types %}
     <span class="integrated-legend-item">
       <span class="integrated-legend-color" data-role="integrated-legend-color" data-media="{{ media }}"></span>
       {{ media }}
     </span>
     {% endfor %}
+  </div>
+  <div class="integrated-legend">
+    <span class="integrated-legend-item"><strong>Patch</strong></span>
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" style="background:#f0abfc;border-color:#d946ef;"></span>
+      Panel box: MPO module
+    </span>
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" style="background:#e0f2fe;border-color:#38bdf8;"></span>
+      Panel box: LC breakout module
+    </span>
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" style="background:#dcfce7;border-color:#16a34a;"></span>
+      Panel box: UTP module
+    </span>
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" style="background:#ffffff;border-color:#64748b;"></span>
+      Front: solid
+    </span>
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" style="background:repeating-linear-gradient(135deg,#f1f5f9 0px,#f1f5f9 2px,#cbd5e1 2px,#cbd5e1 4px);border-color:#64748b;"></span>
+      Rear: diagonal hatch
+    </span>
   </div>
   <div class="integrated-scroll">
     <div data-role="integrated-mode-panel" data-mode="aggregate">{{ integrated_wiring_svgs.aggregate|safe }}</div>

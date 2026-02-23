@@ -541,3 +541,34 @@ def test_rack_panel_svg_supports_uniform_slot_width_across_racks() -> None:
     assert f'width="{uniform_slot_width}"' in svg_r1
     assert f'width="{uniform_slot_width}"' in svg_r2
     assert f'width="{uniform_slot_width}"' in svg_r3
+
+
+def test_integrated_wiring_lc_breakout_uses_mpo_rear_labels() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-lc-breakout"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 12,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+
+    svg = integrated_wiring_svg(result, mode="detailed")
+
+    assert "MPO1" in svg
+    assert "MPO2" in svg
+    assert "P1-P6" in svg
+    assert "P7-P12" in svg
+    assert "MPO1→MPO1" in svg
+    assert "MPO2→MPO2" in svg
+    assert svg.count('class="integrated-wire ') == 2
+    assert svg.count('data-port-anchor="rear"') == 4

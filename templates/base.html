@@ -281,6 +281,15 @@
       border: 1px solid var(--border);
     }
 
+    .integrated-legend-color[data-media] {
+      width: 16px;
+      height: 0;
+      border: 0;
+      border-top: 3px solid var(--legend-color, #334155);
+      border-radius: 0;
+      background: transparent;
+    }
+
     .integrated-scroll {
       overflow-x: auto;
       overflow-y: hidden;
@@ -717,7 +726,12 @@
       });
       card.querySelectorAll('[data-role="integrated-legend-color"]').forEach((item) => {
         const media = item.getAttribute("data-media") || "";
-        item.style.background = mediaColors[media] || "#334155";
+        if (media) {
+          item.style.setProperty("--legend-color", mediaColors[media] || "#334155");
+          item.style.background = "transparent";
+        } else {
+          item.style.background = item.style.background || "#334155";
+        }
       });
       applyMode(card);
     });
