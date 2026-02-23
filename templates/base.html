@@ -303,6 +303,14 @@
       stroke-width: 3 !important;
       opacity: 1 !important;
     }
+
+    .integrated-wire-focus {
+      opacity: 1 !important;
+    }
+
+    .integrated-wire-dim {
+      opacity: 0.12 !important;
+    }
   </style>
 </head>
 <body>
@@ -376,6 +384,7 @@
     };
 
     const viewportStates = new WeakMap();
+    const highlightStates = new WeakMap();
 
     const getMode = (card) => {
       const selected = card.querySelector('input[data-role="integrated-mode"]:checked');
@@ -415,6 +424,16 @@
         "transform",
         `translate(${state.tx},${state.ty}) scale(${state.scale})`
       );
+    };
+
+    const getHighlightedWireId = (card) => highlightStates.get(card) || "";
+
+    const setHighlightedWireId = (card, wireId) => {
+      if (wireId) {
+        highlightStates.set(card, wireId);
+      } else {
+        highlightStates.delete(card);
+      }
     };
 
     const resetViewport = (svg) => {
@@ -494,21 +513,75 @@
       });
     };
 
+    const bindClickFocus = (card, svg) => {
+      if (!svg || svg.dataset.clickFocusBound === "1") {
+        return;
+      }
+      svg.dataset.clickFocusBound = "1";
+
+      svg.addEventListener("click", (event) => {
+        const target = event.target.closest(".integrated-filterable");
+        if (!target) {
+          setHighlightedWireId(card, "");
+          applyFilters(card);
+          return;
+        }
+
+        const wireId = target.getAttribute("data-wire-id") || "";
+        if (!wireId) {
+          return;
+        }
+
+        const current = getHighlightedWireId(card);
+        setHighlightedWireId(card, current === wireId ? "" : wireId);
+        applyFilters(card);
+      });
+    };
+
     const applyFilters = (card) => {
       const selectedMedia = getSelectedMedia(card);
       const selectedRacks = getSelectedRacks(card);
+      let highlightedWireId = getHighlightedWireId(card);
       const svg = getActiveSvg(card);
       if (!svg) {
         return;
       }
-      svg.querySelectorAll(".integrated-filterable").forEach((wire) => {
+
+      let hasVisibleHighlighted = false;
+      const filterableElements = Array.from(svg.querySelectorAll(".integrated-filterable"));
+      filterableElements.forEach((wire) => {
         const media = wire.getAttribute("data-media") || "";
         const srcRack = wire.getAttribute("data-src-rack") || "";
         const dstRack = wire.getAttribute("data-dst-rack") || "";
         const mediaVisible = selectedMedia.has(media);
         const rackVisible = selectedRacks.has(srcRack) && selectedRacks.has(dstRack);
-        wire.style.display = mediaVisible && rackVisible ? "" : "none";
+        const visible = mediaVisible && rackVisible;
+        wire.style.display = visible ? "" : "none";
+
+        const wireId = wire.getAttribute("data-wire-id") || "";
+        if (visible && highlightedWireId && wireId === highlightedWireId) {
+          hasVisibleHighlighted = true;
+        }
       });
+
+      if (highlightedWireId && !hasVisibleHighlighted) {
+        setHighlightedWireId(card, "");
+        highlightedWireId = "";
+      }
+
+      filterableElements.forEach((wire) => {
+        const wireId = wire.getAttribute("data-wire-id") || "";
+        wire.classList.remove("integrated-wire-focus", "integrated-wire-dim");
+        if (!highlightedWireId || !wireId) {
+          return;
+        }
+        if (wireId === highlightedWireId) {
+          wire.classList.add("integrated-wire-focus");
+        } else {
+          wire.classList.add("integrated-wire-dim");
+        }
+      });
+
       svg.querySelectorAll(".integrated-rack-element").forEach((element) => {
         const rack = element.getAttribute("data-rack") || "";
         element.style.display = selectedRacks.has(rack) ? "" : "none";
@@ -525,6 +598,7 @@
       const svg = getActiveSvg(card);
       bindPanZoom(svg);
       bindHover(svg);
+      bindClickFocus(card, svg);
       applyFilters(card);
       if (svg && !viewportStates.has(svg)) {
         resetViewport(svg);
