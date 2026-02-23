@@ -67,7 +67,7 @@ pip install -e ".[dev]"
    python app.py
    ```
 2. Open http://localhost:5000/upload.
-3. Upload a `project.yaml` file (see `examples/quick-start/sample-project.yaml`).
+3. Upload a `project.yaml` file (see `examples/quick-start/sample-project-3rack-35links.yaml`).
 4. Download exported results (`result.json`, `sessions.csv`, `bom.csv`) from the UI.
 
 Operational notes:
@@ -113,7 +113,7 @@ Supported `endpoint_type` values:
 | `mpo12`         | MPO-12 fiber end-to-end              |
 | `utp_rj45`      | Copper UTP, RJ-45 connectors         |
 
-See `examples/quick-start/sample-project.yaml` for a full example including `settings`.
+See `examples/quick-start/sample-project-3rack-35links.yaml` for a full example including `settings`.
 
 The optional `settings.ordering.slot_category_priority` list controls the order in which
 demand categories are allocated to rack slots. The default order is
@@ -297,7 +297,7 @@ pip install -e ".[dev]"
    ```
 2. http://localhost:5000/upload を開きます。
 3. `project.yaml` をアップロードします
-   （`examples/quick-start/sample-project.yaml` を参照）。
+  （`examples/quick-start/sample-project-3rack-35links.yaml` を参照）。
 4. 結果（`result.json`, `sessions.csv`, `bom.csv`）を UI からダウンロードします。
 
 運用メモ:
@@ -343,7 +343,7 @@ demands:
 | `mpo12`         | MPO-12 光ファイバー エンドツーエンド |
 | `utp_rj45`      | 銅線 UTP、RJ-45 コネクタ          |
 
-`settings` を含む完全なサンプルは `examples/quick-start/sample-project.yaml` を参照してください。
+`settings` を含む完全なサンプルは `examples/quick-start/sample-project-3rack-35links.yaml` を参照してください。
 
 任意の `settings.ordering.slot_category_priority` リストで、カテゴリのスロット割り当て順を制御できます。
 デフォルトは `[mpo_e2e, lc_mmf, lc_smf, utp]` です。順序の変更やカテゴリの省略が可能で、

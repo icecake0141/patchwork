@@ -32,7 +32,7 @@ Open http://localhost:5000/upload
 
 ### 4. Upload the sample project file
 
-Upload `examples/quick-start/sample-project.yaml` via the Web UI at http://localhost:5000/upload.
+Upload `examples/quick-start/sample-project-3rack-35links.yaml` via the Web UI at http://localhost:5000/upload.
 
 ### 5. Export / view results
 
@@ -147,7 +147,7 @@ demands:
     count: 8
 ```
 
-See `sample-project.yaml` in this directory for the full version including `settings`.
+See `sample-project-3rack-35links.yaml` in this directory for the full version including `settings`.
 
 ---
 
@@ -320,7 +320,7 @@ settings:
 
 （上記の英語セクションと同じ内容）
 
-このディレクトリの `sample-project.yaml` には、`settings` を含む完全版があります。
+このディレクトリの `sample-project-3rack-35links.yaml` には、`settings` を含む完全版があります。
 
 ---
 
