@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# This file was created or modified with the assistance of an AI (Large Language Model).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PATCHWORK_DB: /data/patchwork.db
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "${GUNICORN_WORKERS:-2}", "app:create_app()"]
+    volumes:
+      - patchwork_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/upload', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${PATCHWORK_HTTPS_PORT:-8443}:443"
+    environment:
+      SSL_CERT_PATH: /etc/nginx/certs/tls.crt
+      SSL_KEY_PATH: /etc/nginx/certs/tls.key
+      SSL_CERT_CN: ${SSL_CERT_CN:-localhost}
+    restart: unless-stopped
+
+volumes:
+  patchwork_data:
