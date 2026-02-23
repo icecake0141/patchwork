@@ -135,8 +135,8 @@ def wiring_svg(result: dict[str, Any]) -> str:
         "utp_rj45": "#ea580c",
     }
 
-    width = 1280
-    top = 88
+    width = 1360
+    top = 110
     group_header_h = 28
     row_h = 18
     group_gap = 16
@@ -152,7 +152,8 @@ def wiring_svg(result: dict[str, Any]) -> str:
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair, sorted by source port number.</text>',
         '<text x="20" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Src panel/slot</text>',
         '<text x="430" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
-        '<text x="1030" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
+        '<text x="1010" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
+        '<text x="1120" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable ID</text>',
     ]
 
     y = top
@@ -167,7 +168,7 @@ def wiring_svg(result: dict[str, Any]) -> str:
         )
 
         lines.append(
-            f'<rect x="18" y="{y - 16}" width="1244" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
+            f'<rect x="18" y="{y - 16}" width="1324" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
         )
         lines.append(
             f'<text x="24" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{src_group_label}</text>'
@@ -176,7 +177,7 @@ def wiring_svg(result: dict[str, Any]) -> str:
             f'<text x="430" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{group_title}</text>'
         )
         lines.append(
-            f'<text x="1030" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{dst_group_label}</text>'
+            f'<text x="1010" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{dst_group_label}</text>'
         )
 
         for index, session in enumerate(sessions):
@@ -193,10 +194,13 @@ def wiring_svg(result: dict[str, Any]) -> str:
                 f'<text x="24" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}</text>'
             )
             lines.append(
-                f'<text x="430" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
+                f'<text x="430" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}→P{dst_port}</text>'
             )
             lines.append(
-                f'<text x="1030" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
+                f'<text x="1010" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
+            )
+            lines.append(
+                f'<text x="1120" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
             )
 
         y += group_header_h + len(sessions) * row_h + group_gap
