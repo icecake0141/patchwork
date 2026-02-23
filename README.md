@@ -21,6 +21,35 @@ Patchwork is a Data Center Rack-to-Rack Patch Cabling Design Assistant. It provi
 Flask-based web interface to upload cabling plans, run deterministic allocations, and
 export results.
 
+## Table of Contents
+
+- [English](#english)
+  - [Overview](#overview)
+  - [Main features](#main-features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Basic usage (Web UI)](#basic-usage-web-ui)
+  - [Docker Compose usage (nginx SSL sidecar)](#docker-compose-usage-nginx-ssl-sidecar)
+  - [Docker tests](#docker-tests)
+  - [Input format — `project.yaml`](#input-format--projectyaml)
+  - [Output files](#output-files)
+  - [Documentation](#documentation)
+  - [Contributing](#contributing)
+  - [License](#license)
+- [日本語 (Japanese)](#日本語-japanese)
+  - [概要](#概要)
+  - [主な機能](#主な機能)
+  - [動作環境](#動作環境)
+  - [インストール](#インストール)
+  - [基本的な使い方（Web UI）](#基本的な使い方web-ui)
+  - [Docker Compose での起動（nginx SSL サイドカー）](#docker-compose-での起動nginx-ssl-サイドカー)
+  - [Docker テスト](#docker-テスト)
+  - [入力形式 — `project.yaml`](#入力形式--projectyaml)
+  - [出力ファイル](#出力ファイル)
+  - [ドキュメント](#ドキュメント)
+  - [コントリビュート](#コントリビュート)
+  - [ライセンス](#ライセンス)
+
 ## English
 
 ### Overview
@@ -274,6 +303,7 @@ can customize those files if you need to adjust the UI styling or layout.
 
 ### Documentation
 - `docs/` contains API and quick-start references.
+- `docs/integrated-wiring-user-guide.md` provides one-page usage notes and a fixed feature-difference matrix for SVG/Draw.io/Interactive SVG.
 - `examples/quick-start/README.md` provides a step-by-step sample workflow.
 - Onboarding guides:
   - [English onboarding guide](docs/onboarding/README.en.md)
