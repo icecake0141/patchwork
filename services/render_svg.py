@@ -24,6 +24,22 @@ MODULE_COLORS = {
 }
 
 
+def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
+    panels = [p for p in result["panels"] if rack_id is None or p["rack_id"] == rack_id]
+    modules = [m for m in result["modules"] if rack_id is None or m["rack_id"] == rack_id]
+    by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
+
+    max_label_chars = len("S1: empty")
+    for panel in panels:
+        for slot in range(1, panel["slots_per_u"] + 1):
+            mod = by_uslot.get((panel["u"], slot))
+            module_type = mod["module_type"] if mod else "empty"
+            label = MODULE_LABELS.get(module_type, module_type)
+            max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
+
+    return max(180, max_label_chars * 6 + 12)
+
+
 def render_topology_svg(result: dict[str, Any]) -> str:
     sessions = result["sessions"]
     agg: dict[tuple[str, str, str], int] = defaultdict(int)
@@ -38,7 +54,9 @@ def render_topology_svg(result: dict[str, Any]) -> str:
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}"><text x="10" y="15" font-size="14">Rack Topology</text>{rows}</svg>'
 
 
-def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
+def render_rack_panels_svg(
+    result: dict[str, Any], rack_id: str, slot_width: int | None = None
+) -> str:
     rack_panels = [p for p in result["panels"] if p["rack_id"] == rack_id]
     modules = [m for m in result["modules"] if m["rack_id"] == rack_id]
     by_uslot = {(m["panel_u"], m["slot"]): m for m in modules}
@@ -48,17 +66,12 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
     racks = project.get("racks", [])
     rack_max_u = next((r.get("max_u", 42) for r in racks if r.get("id") == rack_id), 42)
 
-    max_label_chars = len("S1: empty")
     max_slots_per_u = 1
     for panel in rack_panels:
         max_slots_per_u = max(max_slots_per_u, panel["slots_per_u"])
-        for slot in range(1, panel["slots_per_u"] + 1):
-            mod = by_uslot.get((panel["u"], slot))
-            module_type = mod["module_type"] if mod else "empty"
-            label = MODULE_LABELS.get(module_type, module_type)
-            max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
-
-    slot_width = max(180, max_label_chars * 6 + 12)
+    effective_slot_width = (
+        slot_width if slot_width is not None else rack_slot_width(result, rack_id)
+    )
     slot_gap = 10
     lines = [f'<text x="10" y="18" font-size="14">Rack {rack_id} Panel Occupancy</text>']
     y = 40
@@ -69,13 +82,13 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
             label_u = panel["u"]
         lines.append(f'<text x="10" y="{y}" font-size="12">U{label_u}</text>')
         for slot in range(1, panel["slots_per_u"] + 1):
-            x = 80 + (slot - 1) * (slot_width + slot_gap)
+            x = 80 + (slot - 1) * (effective_slot_width + slot_gap)
             mod = by_uslot.get((panel["u"], slot))
             module_type = mod["module_type"] if mod else "empty"
             label = MODULE_LABELS.get(module_type, module_type)
             fill_color = MODULE_COLORS.get(module_type, "#eef")
             lines.append(
-                f'<rect x="{x}" y="{y - 12}" width="{slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
+                f'<rect x="{x}" y="{y - 12}" width="{effective_slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
             )
             text_color = "#fff" if module_type == "empty" else "#000"
             lines.append(
@@ -83,7 +96,7 @@ def render_rack_panels_svg(result: dict[str, Any], rack_id: str) -> str:
             )
         y += 28
     height = y + 20
-    width = 80 + max_slots_per_u * (slot_width + slot_gap) + 20
+    width = 80 + max_slots_per_u * (effective_slot_width + slot_gap) + 20
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">{"".join(lines)}</svg>'
 
 

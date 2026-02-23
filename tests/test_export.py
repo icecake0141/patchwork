@@ -16,6 +16,7 @@ from services.export import (
     wiring_drawio,
     wiring_svg,
 )
+from services.render_svg import rack_slot_width, render_rack_panels_svg
 
 
 def test_wiring_svg_contains_expected_labels() -> None:
@@ -349,3 +350,41 @@ def test_rack_occupancy_drawio_is_combined_into_single_page() -> None:
     assert drawio.count("<diagram ") == 1
     assert "Rack R1 Panel Occupancy" in drawio
     assert "Rack R2 Panel Occupancy" in drawio
+
+
+def test_rack_panel_svg_supports_uniform_slot_width_across_racks() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "rack-uniform-slot-width"},
+            "racks": [
+                {"id": "R1", "name": "R1"},
+                {"id": "R2", "name": "R2"},
+                {"id": "R3", "name": "R3"},
+            ],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mpo12",
+                    "count": 1,
+                },
+                {
+                    "id": "D2",
+                    "src": "R1",
+                    "dst": "R3",
+                    "endpoint_type": "utp_rj45",
+                    "count": 2,
+                },
+            ],
+        }
+    )
+    result = allocate(project)
+
+    uniform_slot_width = rack_slot_width(result)
+    svg_r1 = render_rack_panels_svg(result, "R1", slot_width=uniform_slot_width)
+    svg_r3 = render_rack_panels_svg(result, "R3", slot_width=uniform_slot_width)
+
+    assert f'width="{uniform_slot_width}"' in svg_r1
+    assert f'width="{uniform_slot_width}"' in svg_r3

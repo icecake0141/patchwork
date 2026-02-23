@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from html import escape
 from typing import Any
 
-from services.render_svg import render_rack_panels_svg
+from services.render_svg import rack_slot_width, render_rack_panels_svg
 
 SESSION_COLUMNS = [
     "project_id",
@@ -877,7 +877,11 @@ def rack_occupancy_drawio(result: dict[str, Any]) -> str:
             page_name="Rack Occupancy",
         )
 
-    rack_svgs = [render_rack_panels_svg(result, rack_id) for rack_id in rack_ids]
+    global_slot_width = rack_slot_width(result)
+    rack_svgs = [
+        render_rack_panels_svg(result, rack_id, slot_width=global_slot_width)
+        for rack_id in rack_ids
+    ]
     parsed_roots = [ET.fromstring(svg_text) for svg_text in rack_svgs]
     rack_sizes = [
         (
