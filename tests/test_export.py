@@ -424,6 +424,22 @@ def test_svg_to_drawio_preserves_opacity_style() -> None:
     assert "opacity=62;" in drawio
 
 
+def test_svg_to_drawio_skips_integrated_gap_helper_elements() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="90">'
+        '<line x1="10" y1="20" x2="90" y2="20" stroke="#00aa00" stroke-width="2"/>'
+        '<circle cx="60" cy="40" r="4" fill="#123456" class="integrated-wire-gap"/>'
+        '<line x1="20" y1="60" x2="120" y2="60" stroke="#ff00ff" stroke-width="2" class="integrated-wire-overpass"/>'
+        "</svg>"
+    )
+    drawio = svg_to_drawio(svg, page_name="GapFilter")
+
+    assert 'name="GapFilter"' in drawio
+    assert "#00aa00" in drawio
+    assert "#ff00ff" not in drawio
+    assert "#123456" not in drawio
+
+
 def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     project = ProjectInput.model_validate(
         {

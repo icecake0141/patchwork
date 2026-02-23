@@ -1189,6 +1189,11 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
         tx = parent_tx + local_tx
         ty = parent_ty + local_ty
         tag = _tag_name(element.tag)
+        class_name = str(element.get("class", ""))
+        if "integrated-wire-gap" in class_name or "integrated-wire-overpass" in class_name:
+            for child in element:
+                visit_element(child, tx, ty)
+            return
 
         if tag == "rect":
             x = _svg_length_to_float(element.get("x"), 0.0) + tx
