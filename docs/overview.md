@@ -75,7 +75,11 @@ Constraints and behavior:
 - Overlap reduction is minimal lane offset by index inside each group.
 - Fixed media colors: `mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`.
 - UI interactions are lightweight (no external JS): wheel zoom, drag pan, hover highlight,
-  mode toggle, and media filter.
+  mode toggle, media/rack filters, click-to-focus, and Gap Jump Scale selection.
+- Crossing readability in SVG uses gap+overpass rendering with adaptive scale (`Auto`) and
+  user multipliers (`×0.50`, `×0.75`, `×1.25`, `×1.50`, `×2.00`).
+- Draw.io exports (`wiring.drawio`, `integrated_wiring.drawio`) remain editable and apply
+  edge jump styling (`jumpStyle=arc`, `jumpSize=6`) for crossing readability.
 
 ## 日本語訳
 

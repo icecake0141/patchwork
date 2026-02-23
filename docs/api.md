@@ -42,13 +42,16 @@ This document describes the interfaces and allocation behavior implemented in th
   - Exports wiring SVG.
 
 - `GET /revisions/<revision_id>/export/wiring.drawio`
-  - Exports Draw.io XML converted from wiring SVG.
+  - Exports editable Draw.io XML converted from wiring SVG.
+  - Edge style includes line-jump readability settings (`jumpStyle=arc`, `jumpSize=6`).
 
 - `GET /revisions/<revision_id>/export/integrated_wiring.drawio`
-  - Exports Draw.io XML containing Integrated Wiring View (Aggregate/Detailed pages).
+  - Exports editable Draw.io XML containing Integrated Wiring View (Aggregate/Detailed pages).
+  - Edge style includes line-jump readability settings (`jumpStyle=arc`, `jumpSize=6`).
 
 - `GET /revisions/<revision_id>/export/integrated_wiring_interactive.svg?mode=aggregate|detailed`
-  - Exports standalone Integrated Wiring SVG with embedded media/rack checkbox filters.
+  - Exports standalone Integrated Wiring SVG with embedded controls:
+    media/rack checkbox filters, click-to-focus highlight, zoom/pan, and Gap Jump Scale selector.
 
 - `GET /revisions/<revision_id>/export/rack_occupancy.drawio`
   - Exports Draw.io XML containing a single combined Rack Occupancy sheet.
@@ -168,6 +171,16 @@ This document describes the interfaces and allocation behavior implemented in th
 - `sessions` sorted by `session_id`.
 - `warnings` includes non-fatal mismatches (for example UTP side count mismatch).
 - `errors` includes rack overflow and other fatal allocation issues.
+
+## Integrated Wiring Interaction Notes
+
+- Aggregate mode groups sessions by
+  `(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)` and draws one conceptual route per group.
+- Detailed mode renders per-session routes and labels.
+- Click-to-focus is toggle-based:
+  - Click wire/label once -> focus selection and dim non-related routes.
+  - Click the same target again or click empty canvas -> clear focus state.
+- Gap Jump Scale selector supports `Auto`, `Auto × 0.50`, `Auto × 0.75`, `Auto × 1.25`, `Auto × 1.50`, `Auto × 2.00`.
 
 ## CLI
 - `python app.py` (starts web UI)

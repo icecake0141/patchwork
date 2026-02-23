@@ -33,6 +33,7 @@ Patchwork helps data center operators design patch cabling layouts. You upload a
 - Deterministic trial allocation for cabling plans.
 - SVG visualizations (topology, rack occupancy, pair details).
 - Integrated Wiring View (Rack Occupancy coordinate overlay with interactive cable paths).
+- Interactive integrated controls: media/rack filters, click-to-focus highlight, and adjustable Gap Jump Scale.
 - Revision diff tracking for logical and physical changes.
 
 ### Requirements
@@ -73,6 +74,41 @@ pip install -e ".[dev]"
 Operational notes:
 - Upload size limit is 1 MiB per request (`MAX_CONTENT_LENGTH`).
 - Set `SECRET_KEY` in production; otherwise the app uses `dev-secret` fallback.
+
+### Docker Compose usage (nginx SSL sidecar)
+You can run Patchwork with Docker Compose using `nginx` as an HTTPS reverse proxy sidecar.
+
+1. Build and start containers:
+  ```bash
+  docker compose up -d --build
+  ```
+2. Open `https://localhost:8443/upload` in your browser.
+  - The default certificate is self-signed and generated automatically at container startup.
+  - For local verification, you may need to accept a browser warning.
+3. Stop containers:
+  ```bash
+  docker compose down -v
+  ```
+
+Optional environment variables:
+- `PATCHWORK_HTTPS_PORT` (default: `8443`)
+- `SECRET_KEY` (default: `change-me` in Compose)
+- `GUNICORN_WORKERS` (default: `2`)
+- `SSL_CERT_CN` (default: `localhost`)
+
+Example:
+```bash
+PATCHWORK_HTTPS_PORT=9443 SECRET_KEY='replace-me' docker compose up -d --build
+```
+
+### Docker tests
+Docker integration tests (image build and HTTPS startup) are included in `tests/test_docker_compose.py`.
+
+```bash
+RUN_DOCKER_TESTS=1 pytest -q tests/test_docker_compose.py
+```
+
+By default these tests are skipped unless `RUN_DOCKER_TESTS=1` is set.
 
 ### Input format — `project.yaml`
 
@@ -173,16 +209,22 @@ After allocation Patchwork produces downloadable files:
 | `bom.csv`      | Bill of Materials: panels, modules, and cables with quantities. |
 | `result.json`  | Full structured allocation result (panels, modules, cables, sessions, metrics). |
 | `wiring.svg`   | Visual cable wiring diagram (one line per cable, with source/destination panel positions). |
-| `wiring.drawio`| Draw.io XML (`.drawio`) converted from `wiring.svg` for diagrams.net import/edit workflows. |
-| `integrated_wiring.drawio` | Draw.io XML with 2 pages: Integrated Wiring `Aggregate` and `Detailed`. |
+| `wiring.drawio`| Editable Draw.io XML (`.drawio`) converted from `wiring.svg` for diagrams.net workflows. |
+| `integrated_wiring.drawio` | Editable Draw.io XML with 2 pages: Integrated Wiring `Aggregate` and `Detailed`. |
+| `integrated_wiring_interactive.svg` | Standalone Integrated Wiring SVG (mode selectable) with embedded interactive controls. |
 | `rack_occupancy.drawio` | Draw.io XML with a single sheet combining all racks in Rack Occupancy view. |
 
 The Trial and Project detail pages also include an **Integrated Wiring View** for interactive
 inspection. This view is rendered in-page (not a replacement for `wiring.svg`) and supports:
 - Mode toggle: `Aggregate` (slot-to-slot conceptual overview) / `Detailed` (session-level detail)
 - Media filter checkboxes (`mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`)
+- Rack filter checkboxes (show/hide specific racks)
+- Click-to-focus: click a wire or port label to focus and dim other paths; click again to clear
+- Gap Jump Scale selector (`Auto`, `Auto × 0.50`, `Auto × 0.75`, `Auto × 1.25`, `Auto × 1.50`, `Auto × 2.00`)
 - Hover highlighting, mouse-wheel zoom, and drag pan
 - Horizontal scroll container for wide topologies
+
+Draw.io exports include line-crossing readability style on edges (`jumpStyle=arc`, `jumpSize=6`).
 
 **`sessions.csv` excerpt:**
 ```
@@ -313,6 +355,41 @@ pip install -e ".[dev]"
 運用メモ:
 - 1 リクエストあたりのアップロード上限は 1 MiB（`MAX_CONTENT_LENGTH`）です。
 - 本番運用では `SECRET_KEY` を設定してください。未設定時は `dev-secret` が使われます。
+
+### Docker Compose での起動（nginx SSL サイドカー）
+`nginx` を HTTPS リバースプロキシのサイドカーとして利用し、Patchwork を Docker Compose で起動できます。
+
+1. イメージをビルドして起動します。
+  ```bash
+  docker compose up -d --build
+  ```
+2. ブラウザで `https://localhost:8443/upload` を開きます。
+  - デフォルト証明書は自己署名で、コンテナ起動時に自動生成されます。
+  - ローカル検証時はブラウザの警告を許可してください。
+3. 停止します。
+  ```bash
+  docker compose down -v
+  ```
+
+任意の環境変数:
+- `PATCHWORK_HTTPS_PORT`（既定: `8443`）
+- `SECRET_KEY`（Compose 既定: `change-me`）
+- `GUNICORN_WORKERS`（既定: `2`）
+- `SSL_CERT_CN`（既定: `localhost`）
+
+例:
+```bash
+PATCHWORK_HTTPS_PORT=9443 SECRET_KEY='replace-me' docker compose up -d --build
+```
+
+### Docker テスト
+Docker 向けの統合テスト（イメージ Build と HTTPS 起動確認）を `tests/test_docker_compose.py` に追加しています。
+
+```bash
+RUN_DOCKER_TESTS=1 pytest -q tests/test_docker_compose.py
+```
+
+`RUN_DOCKER_TESTS=1` を指定しない場合、Docker テストは自動的に skip されます。
 
 ### 入力形式 — `project.yaml`
 
