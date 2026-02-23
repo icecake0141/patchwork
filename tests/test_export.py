@@ -232,7 +232,7 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     detailed_svg = integrated_wiring_svg(result, mode="detailed")
     aggregate_svg = integrated_wiring_svg(result, mode="aggregate")
 
-    assert 'class="integrated-port-label integrated-rack-element"' in detailed_svg
+    assert 'class="integrated-port-label integrated-filterable"' in detailed_svg
     assert detailed_svg.count(">P1</text>") >= 2
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
@@ -445,7 +445,8 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     assert 'data-role="integrated-port-state"' in svg
     assert 'data-role="integrated-anchor-label-toggle"' in svg
     assert 'value="occupied" checked="checked"' in svg
-    assert 'value="free" />free' in svg
+    assert 'value="free" checked="checked" />free' in svg
+    assert 'data-role="integrated-anchor-label-toggle" checked="checked"' in svg
     assert ".integrated-filterable" in svg
     assert "Port State" in svg
     assert "Anchor Label" in svg

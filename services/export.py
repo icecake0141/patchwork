@@ -663,27 +663,22 @@ def integrated_wiring_svg(
 
                 port_state = "occupied" if port in ports_set else "free"
                 line_opacity = "1.0" if port_state == "occupied" else "0.30"
-                text_fill = "#0f172a" if port_state == "occupied" else "#64748b"
+                anchor_w = 14
+                anchor_h = 8
                 node_lines.append(
-                    f'<rect x="{front_x - 2.5}" y="{anchor_y - 2.5}" width="5" height="5" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
+                    f'<rect x="{front_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="front"/>'
                 )
                 node_lines.append(
-                    f'<rect x="{rear_x - 2.5}" y="{anchor_y - 2.5}" width="5" height="5" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
+                    f'<rect x="{rear_x - anchor_w / 2}" y="{anchor_y - anchor_h / 2}" width="{anchor_w}" height="{anchor_h}" rx="1.2" ry="1.2" fill="#ffffff" stroke="#94a3b8" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-port-anchor="rear"/>'
                 )
                 node_lines.append(
-                    f'<text x="{front_x}" y="{anchor_y + 1.6}" font-size="5.0" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1" style="display:none">P{port}</text>'
+                    f'<text x="{front_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'
                 )
                 node_lines.append(
-                    f'<text x="{rear_x}" y="{anchor_y + 1.6}" font-size="5.0" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1" style="display:none">P{port}</text>'
-                )
-                node_lines.append(
-                    f'<text x="{front_x - (30 if rear_dx > 0 else -6)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
+                    f'<text x="{rear_x}" y="{anchor_y + 2.2}" font-size="6.6" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}" data-anchor-port-label="1">P{port}</text>'
                 )
                 node_lines.append(
                     f'<line x1="{front_x}" y1="{anchor_y}" x2="{rear_x}" y2="{anchor_y}" stroke="#94a3b8" stroke-width="0.9" opacity="{line_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-port-state="{port_state}"/>'
-                )
-                node_lines.append(
-                    f'<text x="{rear_x + (6 if rear_dx > 0 else -28)}" y="{row_y}" font-size="9" font-family="Arial, sans-serif" fill="{text_fill}" opacity="{line_opacity}" class="integrated-port-label integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{port_state}">P{port}</text>'
                 )
         else:
             node_lines.append(
@@ -1196,11 +1191,11 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
     port_state_controls = "".join(
         [
             '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="occupied" checked="checked" />occupied</label>',
-            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" />free</label>',
+            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" checked="checked" />free</label>',
         ]
     )
     anchor_label_controls = (
-        '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-anchor-label-toggle" />show P# in anchor box</label>'
+        '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-anchor-label-toggle" checked="checked" />show P# in anchor box</label>'
     )
     legend_items = "".join(
         f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{MEDIA_COLORS.get(media, "#334155")};"></span>{escape(media)}</span>'
