@@ -236,7 +236,9 @@ def test_trial_page_shows_bom_table(tmp_path) -> None:
     assert b"quantity" in trial_resp.data
     assert b"click a wire or port label to focus it" in trial_resp.data
     assert b"Gap Jump Scale" in trial_resp.data
+    assert b"Auto \xc3\x97 0.50" in trial_resp.data
     assert b"Auto \xc3\x97 1.25" in trial_resp.data
+    assert b"Auto \xc3\x97 2.00" in trial_resp.data
 
 
 def test_project_detail_shows_bom_table(tmp_path) -> None:
@@ -271,7 +273,9 @@ def test_project_detail_shows_bom_table(tmp_path) -> None:
     assert b"quantity" in resp.data
     assert b"click a wire or port label to focus it" in resp.data
     assert b"Gap Jump Scale" in resp.data
+    assert b"Auto \xc3\x97 0.50" in resp.data
     assert b"Auto \xc3\x97 1.50" in resp.data
+    assert b"Auto \xc3\x97 2.00" in resp.data
 
 
 def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
