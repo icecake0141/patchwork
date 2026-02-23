@@ -747,7 +747,9 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
     width = _svg_length_to_float(root.get("width"), 1680.0)
     height = _svg_length_to_float(root.get("height"), 860.0)
 
-    media_types = sorted({str(s.get("media", "")) for s in result.get("sessions", []) if s.get("media")})
+    media_types = sorted(
+        {str(s.get("media", "")) for s in result.get("sessions", []) if s.get("media")}
+    )
     rack_ids = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
 
     media_controls = "".join(
@@ -770,33 +772,33 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Media</strong>{media_controls}</span>'
         f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Racks</strong>{rack_controls}</span>'
         f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Legend</strong>{legend_items}</span>'
-        '</div>'
-        '</foreignObject>'
+        "</div>"
+        "</foreignObject>"
     )
 
     script = (
-        '<script><![CDATA[(function(){'
-        'const svg=(document.currentScript&&document.currentScript.ownerSVGElement)||document.documentElement;'
-        'const getChecked=(selector)=>new Set(Array.from(svg.querySelectorAll(selector)).filter((el)=>el.checked).map((el)=>el.value));'
-        'const apply=()=>{'
-        'const selectedMedia=getChecked(\'input[data-role="integrated-media"]\');'
-        'const selectedRacks=getChecked(\'input[data-role="integrated-rack"]\');'
-        'svg.querySelectorAll(\'.integrated-filterable\').forEach((wire)=>{'
-        'const media=wire.getAttribute(\'data-media\')||\'\';'
-        'const srcRack=wire.getAttribute(\'data-src-rack\')||\'\';'
-        'const dstRack=wire.getAttribute(\'data-dst-rack\')||\'\';'
-        'const mediaVisible=selectedMedia.size===0?false:selectedMedia.has(media);'
-        'const rackVisible=selectedRacks.has(srcRack)&&selectedRacks.has(dstRack);'
-        'wire.style.display=mediaVisible&&rackVisible?\'\':\'none\';'
-        '});'
-        'svg.querySelectorAll(\'.integrated-rack-element\').forEach((el)=>{'
-        'const rack=el.getAttribute(\'data-rack\')||\'\';'
-        'el.style.display=selectedRacks.has(rack)?\'\':\'none\';'
-        '});'
-        '};'
-        'svg.querySelectorAll(\'input[data-role="integrated-media"],input[data-role="integrated-rack"]\').forEach((el)=>el.addEventListener(\'change\',apply));'
-        'apply();'
-        '})();]]></script>'
+        "<script><![CDATA[(function(){"
+        "const svg=(document.currentScript&&document.currentScript.ownerSVGElement)||document.documentElement;"
+        "const getChecked=(selector)=>new Set(Array.from(svg.querySelectorAll(selector)).filter((el)=>el.checked).map((el)=>el.value));"
+        "const apply=()=>{"
+        "const selectedMedia=getChecked('input[data-role=\"integrated-media\"]');"
+        "const selectedRacks=getChecked('input[data-role=\"integrated-rack\"]');"
+        "svg.querySelectorAll('.integrated-filterable').forEach((wire)=>{"
+        "const media=wire.getAttribute('data-media')||'';"
+        "const srcRack=wire.getAttribute('data-src-rack')||'';"
+        "const dstRack=wire.getAttribute('data-dst-rack')||'';"
+        "const mediaVisible=selectedMedia.size===0?false:selectedMedia.has(media);"
+        "const rackVisible=selectedRacks.has(srcRack)&&selectedRacks.has(dstRack);"
+        "wire.style.display=mediaVisible&&rackVisible?'':'none';"
+        "});"
+        "svg.querySelectorAll('.integrated-rack-element').forEach((el)=>{"
+        "const rack=el.getAttribute('data-rack')||'';"
+        "el.style.display=selectedRacks.has(rack)?'':'none';"
+        "});"
+        "};"
+        "svg.querySelectorAll('input[data-role=\"integrated-media\"],input[data-role=\"integrated-rack\"]').forEach((el)=>el.addEventListener('change',apply));"
+        "apply();"
+        "})();]]></script>"
     )
 
     start_index = base_svg.find(">")
@@ -823,10 +825,10 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         f'<text x="18" y="{title_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Title</text>'
         f'<rect x="10" y="{diagram_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{diagram_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
         f'<text x="18" y="{diagram_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Wiring Diagram</text>'
-        f'{foreign_object}'
+        f"{foreign_object}"
         f'<g transform="translate(0,{shift_y:.0f})">{inner}</g>'
-        f'{script}'
-        '</svg>'
+        f"{script}"
+        "</svg>"
     )
 
 

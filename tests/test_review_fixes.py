@@ -238,8 +238,8 @@ def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
     resp_integrated = client.get(f"/revisions/{revision_id}/export/integrated_wiring.drawio")
     assert resp_integrated.status_code == 200
     assert resp_integrated.mimetype == "application/xml"
-    assert b'Integrated Wiring (Aggregate)' in resp_integrated.data
-    assert b'Integrated Wiring (Detailed)' in resp_integrated.data
+    assert b"Integrated Wiring (Aggregate)" in resp_integrated.data
+    assert b"Integrated Wiring (Detailed)" in resp_integrated.data
     assert b"curved=1;" in resp_integrated.data
 
     resp_integrated_interactive = client.get(

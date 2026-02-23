@@ -293,7 +293,9 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
             "version": 1,
             "project": {"name": "integrated-interactive-svg"},
             "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
-            "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
         }
     )
     result = allocate(project)
@@ -315,7 +317,9 @@ def test_integrated_wiring_interactive_svg_is_well_formed_xml() -> None:
             "version": 1,
             "project": {"name": "integrated-interactive-xml"},
             "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
-            "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
         }
     )
     result = allocate(project)
