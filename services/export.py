@@ -790,13 +790,13 @@ def integrated_wiring_svg(
             stroke_width = 2.2 if mode == "aggregate" else 1.6
             wire_curve = (
                 src_snap_x,
-                y1 + lane_offset,
+                y1,
                 c1x,
                 c1y,
                 c2x,
                 c2y,
                 dst_snap_x,
-                y2 + lane_offset,
+                y2,
             )
             path_d = (
                 f"M {wire_curve[0]} {wire_curve[1]} "
