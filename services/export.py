@@ -299,7 +299,7 @@ def integrated_wiring_svg(
         '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Integrated Wiring View</text>',
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>',
         '<text x="20" y="72" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>',
-        '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="84" width="100%" height="100%"/></clipPath></defs>',
+        '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="56" width="100%" height="100%"/></clipPath></defs>',
         '<g data-role="viewport" clip-path="url(#integrated-viewport-clip)">',
     ]
 
@@ -524,6 +524,20 @@ def _parse_svg_path_cubic(
     return (x1, y1, c1x, c1y, c2x, c2y, x2, y2)
 
 
+def _parse_translate(transform: str | None) -> tuple[float, float]:
+    if not transform:
+        return (0.0, 0.0)
+    match = re.search(
+        r"translate\(\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*(?:[ ,]\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?))?\s*\)",
+        transform,
+    )
+    if not match:
+        return (0.0, 0.0)
+    tx = float(match.group(1))
+    ty = float(match.group(2)) if match.group(2) is not None else 0.0
+    return (tx, ty)
+
+
 def _svg_to_mx_graph_model(svg_text: str) -> str:
     root = ET.fromstring(svg_text)
     width = _svg_length_to_float(root.get("width"), 1280.0)
@@ -538,11 +552,16 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
 
     next_id = 2
 
-    for element in root.iter():
+    def visit_element(element: ET.Element, parent_tx: float = 0.0, parent_ty: float = 0.0) -> None:
+        nonlocal next_id
+        local_tx, local_ty = _parse_translate(element.get("transform"))
+        tx = parent_tx + local_tx
+        ty = parent_ty + local_ty
         tag = _tag_name(element.tag)
+
         if tag == "rect":
-            x = _svg_length_to_float(element.get("x"), 0.0)
-            y = _svg_length_to_float(element.get("y"), 0.0)
+            x = _svg_length_to_float(element.get("x"), 0.0) + tx
+            y = _svg_length_to_float(element.get("y"), 0.0) + ty
             rect_w = _svg_length_to_float(element.get("width"), 0.0)
             rect_h = _svg_length_to_float(element.get("height"), 0.0)
             fill = element.get("fill", "none")
@@ -559,13 +578,12 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             )
             lines.append("</mxCell>")
             next_id += 1
-            continue
 
-        if tag == "line":
-            x1 = _svg_length_to_float(element.get("x1"), 0.0)
-            y1 = _svg_length_to_float(element.get("y1"), 0.0)
-            x2 = _svg_length_to_float(element.get("x2"), 0.0)
-            y2 = _svg_length_to_float(element.get("y2"), 0.0)
+        elif tag == "line":
+            x1 = _svg_length_to_float(element.get("x1"), 0.0) + tx
+            y1 = _svg_length_to_float(element.get("y1"), 0.0) + ty
+            x2 = _svg_length_to_float(element.get("x2"), 0.0) + tx
+            y2 = _svg_length_to_float(element.get("y2"), 0.0) + ty
             stroke = element.get("stroke", "#1f2937")
             stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
             style = (
@@ -582,66 +600,69 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             lines.append("</mxGeometry>")
             lines.append("</mxCell>")
             next_id += 1
-            continue
 
-        if tag == "path":
+        elif tag == "path":
             path_d = element.get("d", "")
             parsed = _parse_svg_path_cubic(path_d)
-            if parsed is None:
-                continue
-            x1, y1, c1x, c1y, c2x, c2y, x2, y2 = parsed
-            stroke = element.get("stroke", "#1f2937")
-            stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
-            style = (
-                "edgeStyle=none;curved=1;html=1;rounded=0;"
-                f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
-                "endArrow=none;startArrow=none;"
-            )
-            lines.append(
-                f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
-            )
-            lines.append('<mxGeometry relative="1" as="geometry">')
-            lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
-            lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
-            lines.append('<Array as="points">')
-            lines.append(f'<mxPoint x="{c1x:.2f}" y="{c1y:.2f}"/>')
-            lines.append(f'<mxPoint x="{c2x:.2f}" y="{c2y:.2f}"/>')
-            lines.append("</Array>")
-            lines.append("</mxGeometry>")
-            lines.append("</mxCell>")
-            next_id += 1
-            continue
+            if parsed is not None:
+                x1, y1, c1x, c1y, c2x, c2y, x2, y2 = parsed
+                x1 += tx
+                y1 += ty
+                c1x += tx
+                c1y += ty
+                c2x += tx
+                c2y += ty
+                x2 += tx
+                y2 += ty
+                stroke = element.get("stroke", "#1f2937")
+                stroke_width = _svg_length_to_float(element.get("stroke-width"), 1.0)
+                style = (
+                    "edgeStyle=none;curved=1;html=1;rounded=0;"
+                    f"strokeColor={stroke};strokeWidth={stroke_width:.2f};"
+                    "endArrow=none;startArrow=none;"
+                )
+                lines.append(
+                    f'<mxCell id="{next_id}" value="" style="{escape(style, quote=True)}" edge="1" parent="1">'
+                )
+                lines.append('<mxGeometry relative="1" as="geometry">')
+                lines.append(f'<mxPoint x="{x1:.2f}" y="{y1:.2f}" as="sourcePoint"/>')
+                lines.append(f'<mxPoint x="{x2:.2f}" y="{y2:.2f}" as="targetPoint"/>')
+                lines.append('<Array as="points">')
+                lines.append(f'<mxPoint x="{c1x:.2f}" y="{c1y:.2f}"/>')
+                lines.append(f'<mxPoint x="{c2x:.2f}" y="{c2y:.2f}"/>')
+                lines.append("</Array>")
+                lines.append("</mxGeometry>")
+                lines.append("</mxCell>")
+                next_id += 1
 
-        if tag == "text":
+        elif tag == "text":
             text_value = "".join(element.itertext()).strip()
-            if not text_value:
-                continue
-            x = _svg_length_to_float(element.get("x"), 0.0)
-            y = _svg_length_to_float(element.get("y"), 0.0)
-            font_size = _svg_length_to_float(element.get("font-size"), 12.0)
-            fill = element.get("fill", "#111827")
-            font_family = element.get("font-family", "Arial")
-            weight = element.get("font-weight", "normal")
-            font_style = "1" if str(weight).lower() == "bold" else "0"
-            text_w = max(40.0, len(text_value) * font_size * 0.62)
-            text_h = max(14.0, font_size * 1.35)
-            style = (
-                "text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;"
-                f"fontSize={font_size:.0f};fontColor={fill};fontFamily={font_family};fontStyle={font_style};"
-            )
-            lines.append(
-                f'<mxCell id="{next_id}" value="{escape(text_value, quote=True)}" style="{escape(style, quote=True)}" vertex="1" parent="1">'
-            )
-            lines.append(
-                f'<mxGeometry x="{x:.2f}" y="{max(0.0, y - text_h + 2):.2f}" width="{text_w:.2f}" height="{text_h:.2f}" as="geometry"/>'
-            )
-            lines.append("</mxCell>")
-            next_id += 1
-            continue
+            if text_value:
+                x = _svg_length_to_float(element.get("x"), 0.0) + tx
+                y = _svg_length_to_float(element.get("y"), 0.0) + ty
+                font_size = _svg_length_to_float(element.get("font-size"), 12.0)
+                fill = element.get("fill", "#111827")
+                font_family = element.get("font-family", "Arial")
+                weight = element.get("font-weight", "normal")
+                font_style = "1" if str(weight).lower() == "bold" else "0"
+                text_w = max(40.0, len(text_value) * font_size * 0.62)
+                text_h = max(14.0, font_size * 1.35)
+                style = (
+                    "text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;"
+                    f"fontSize={font_size:.0f};fontColor={fill};fontFamily={font_family};fontStyle={font_style};"
+                )
+                lines.append(
+                    f'<mxCell id="{next_id}" value="{escape(text_value, quote=True)}" style="{escape(style, quote=True)}" vertex="1" parent="1">'
+                )
+                lines.append(
+                    f'<mxGeometry x="{x:.2f}" y="{max(0.0, y - text_h + 2):.2f}" width="{text_w:.2f}" height="{text_h:.2f}" as="geometry"/>'
+                )
+                lines.append("</mxCell>")
+                next_id += 1
 
-        if tag == "circle":
-            cx = _svg_length_to_float(element.get("cx"), 0.0)
-            cy = _svg_length_to_float(element.get("cy"), 0.0)
+        elif tag == "circle":
+            cx = _svg_length_to_float(element.get("cx"), 0.0) + tx
+            cy = _svg_length_to_float(element.get("cy"), 0.0) + ty
             radius = _svg_length_to_float(element.get("r"), 0.0)
             fill = element.get("fill", "none")
             stroke = element.get("stroke", "none")
@@ -655,6 +676,11 @@ def _svg_to_mx_graph_model(svg_text: str) -> str:
             )
             lines.append("</mxCell>")
             next_id += 1
+
+        for child in element:
+            visit_element(child, tx, ty)
+
+    visit_element(root)
 
     lines.extend(
         [
@@ -709,6 +735,99 @@ def integrated_wiring_drawio(result: dict[str, Any]) -> str:
         ("Integrated Wiring (Detailed)", integrated_wiring_svg(result, mode="detailed")),
     ]
     return svgs_to_drawio(pages)
+
+
+def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggregate") -> str:
+    """Build standalone integrated wiring SVG with checkbox filters embedded."""
+    if mode not in {"aggregate", "detailed"}:
+        raise ValueError("mode must be 'aggregate' or 'detailed'")
+
+    base_svg = integrated_wiring_svg(result, mode=mode)
+    root = ET.fromstring(base_svg)
+    width = _svg_length_to_float(root.get("width"), 1680.0)
+    height = _svg_length_to_float(root.get("height"), 860.0)
+
+    media_types = sorted({str(s.get("media", "")) for s in result.get("sessions", []) if s.get("media")})
+    rack_ids = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
+
+    media_controls = "".join(
+        f'<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-media" value="{escape(media, quote=True)}" checked="checked" />{escape(media)}</label>'
+        for media in media_types
+    )
+    rack_controls = "".join(
+        f'<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-rack" value="{escape(rack_id, quote=True)}" checked="checked" />{escape(rack_id)}</label>'
+        for rack_id in rack_ids
+    )
+    legend_items = "".join(
+        f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{MEDIA_COLORS.get(media, "#334155")};"></span>{escape(media)}</span>'
+        for media in media_types
+    )
+
+    foreign_object = (
+        f'<foreignObject x="16" y="10" width="{max(320.0, width - 32.0):.0f}" height="26">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
+        '<span style="font-weight: 700;">Filter</span>'
+        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Media</strong>{media_controls}</span>'
+        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Racks</strong>{rack_controls}</span>'
+        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Legend</strong>{legend_items}</span>'
+        '</div>'
+        '</foreignObject>'
+    )
+
+    script = (
+        '<script><![CDATA[(function(){'
+        'const svg=(document.currentScript&&document.currentScript.ownerSVGElement)||document.documentElement;'
+        'const getChecked=(selector)=>new Set(Array.from(svg.querySelectorAll(selector)).filter((el)=>el.checked).map((el)=>el.value));'
+        'const apply=()=>{'
+        'const selectedMedia=getChecked(\'input[data-role="integrated-media"]\');'
+        'const selectedRacks=getChecked(\'input[data-role="integrated-rack"]\');'
+        'svg.querySelectorAll(\'.integrated-filterable\').forEach((wire)=>{'
+        'const media=wire.getAttribute(\'data-media\')||\'\';'
+        'const srcRack=wire.getAttribute(\'data-src-rack\')||\'\';'
+        'const dstRack=wire.getAttribute(\'data-dst-rack\')||\'\';'
+        'const mediaVisible=selectedMedia.size===0?false:selectedMedia.has(media);'
+        'const rackVisible=selectedRacks.has(srcRack)&&selectedRacks.has(dstRack);'
+        'wire.style.display=mediaVisible&&rackVisible?\'\':\'none\';'
+        '});'
+        'svg.querySelectorAll(\'.integrated-rack-element\').forEach((el)=>{'
+        'const rack=el.getAttribute(\'data-rack\')||\'\';'
+        'el.style.display=selectedRacks.has(rack)?\'\':\'none\';'
+        '});'
+        '};'
+        'svg.querySelectorAll(\'input[data-role="integrated-media"],input[data-role="integrated-rack"]\').forEach((el)=>el.addEventListener(\'change\',apply));'
+        'apply();'
+        '})();]]></script>'
+    )
+
+    start_index = base_svg.find(">")
+    end_index = base_svg.rfind("</svg>")
+    if start_index == -1 or end_index == -1:
+        return base_svg
+    inner = base_svg[start_index + 1 : end_index]
+
+    shift_y = 42.0
+    new_height = height + shift_y
+    controls_y = 6.0
+    controls_h = 34.0
+    title_y = 40.0
+    title_h = 80.0
+    diagram_y = 122.0
+    diagram_h = max(100.0, new_height - diagram_y - 10.0)
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{new_height:.0f}" viewBox="0 0 {width:.0f} {new_height:.0f}" data-role="integrated-wiring">'
+        '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>'
+        f'<rect x="10" y="{controls_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{controls_h:.0f}" fill="#f8fafc" stroke="#d1d5db"/>'
+        f'<text x="18" y="{controls_y + 13:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Controls / Legend</text>'
+        f'<rect x="10" y="{title_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{title_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
+        f'<text x="18" y="{title_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Title</text>'
+        f'<rect x="10" y="{diagram_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{diagram_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
+        f'<text x="18" y="{diagram_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Wiring Diagram</text>'
+        f'{foreign_object}'
+        f'<g transform="translate(0,{shift_y:.0f})">{inner}</g>'
+        f'{script}'
+        '</svg>'
+    )
 
 
 def rack_occupancy_drawio(result: dict[str, Any]) -> str:

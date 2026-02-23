@@ -18,8 +18,9 @@ from models import ProjectInput
 from services.allocator import allocate
 from services.export import (
     bom_csv,
-    integrated_wiring_svg,
     integrated_wiring_drawio,
+    integrated_wiring_interactive_svg,
+    integrated_wiring_svg,
     rack_occupancy_drawio,
     result_json,
     sessions_csv,
@@ -244,6 +245,24 @@ def create_app() -> Flask:
             mimetype="application/xml",
             headers={
                 "Content-Disposition": f"attachment; filename={revision_id}_integrated_wiring.drawio"
+            },
+        )
+
+    @app.get("/revisions/<revision_id>/export/integrated_wiring_interactive.svg")
+    def export_integrated_wiring_interactive_svg(revision_id: str) -> Response:
+        rev = db.get_revision(revision_id)
+        if not rev:
+            return Response("not found", status=404)
+        mode = request.args.get("mode", "aggregate")
+        if mode not in {"aggregate", "detailed"}:
+            mode = "aggregate"
+        result = json.loads(rev["result_json"])
+        svg_text = integrated_wiring_interactive_svg(result, mode=mode)
+        return Response(
+            svg_text,
+            mimetype="image/svg+xml",
+            headers={
+                "Content-Disposition": f"attachment; filename={revision_id}_integrated_wiring_{mode}_interactive.svg"
             },
         )
 

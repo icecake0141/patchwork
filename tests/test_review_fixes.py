@@ -242,6 +242,15 @@ def test_export_wiring_drawio_returns_drawio_xml(tmp_path) -> None:
     assert b'Integrated Wiring (Detailed)' in resp_integrated.data
     assert b"curved=1;" in resp_integrated.data
 
+    resp_integrated_interactive = client.get(
+        f"/revisions/{revision_id}/export/integrated_wiring_interactive.svg?mode=aggregate"
+    )
+    assert resp_integrated_interactive.status_code == 200
+    assert resp_integrated_interactive.mimetype == "image/svg+xml"
+    assert b"<foreignObject" in resp_integrated_interactive.data
+    assert b'data-role="integrated-media"' in resp_integrated_interactive.data
+    assert b'data-role="integrated-rack"' in resp_integrated_interactive.data
+
     resp_rack = client.get(f"/revisions/{revision_id}/export/rack_occupancy.drawio")
     assert resp_rack.status_code == 200
     assert resp_rack.mimetype == "application/xml"

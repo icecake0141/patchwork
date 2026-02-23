@@ -47,6 +47,9 @@ This document describes the interfaces and allocation behavior implemented in th
 - `GET /revisions/<revision_id>/export/integrated_wiring.drawio`
   - Exports Draw.io XML containing Integrated Wiring View (Aggregate/Detailed pages).
 
+- `GET /revisions/<revision_id>/export/integrated_wiring_interactive.svg?mode=aggregate|detailed`
+  - Exports standalone Integrated Wiring SVG with embedded media/rack checkbox filters.
+
 - `GET /revisions/<revision_id>/export/rack_occupancy.drawio`
   - Exports Draw.io XML containing a single combined Rack Occupancy sheet.
 
@@ -215,6 +218,9 @@ See `examples/quick-start` for end-to-end examples.
 
 - `GET /revisions/<revision_id>/export/integrated_wiring.drawio`
   - Integrated Wiring View（Aggregate/Detailed 2 ページ）を含む Draw.io XML を出力します。
+
+- `GET /revisions/<revision_id>/export/integrated_wiring_interactive.svg?mode=aggregate|detailed`
+  - media/rack のチェックボックスフィルタを埋め込んだ Integrated Wiring SVG を出力します。
 
 - `GET /revisions/<revision_id>/export/rack_occupancy.drawio`
   - Rack Occupancy（全ラックを 1 シートでまとめた）Draw.io XML を出力します。

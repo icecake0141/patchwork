@@ -386,6 +386,7 @@ demands:
 | `result.json`  | 全割り当て結果の構造化 JSON（パネル、モジュール、ケーブル、セッション、メトリクス）。 |
 | `wiring.drawio`| `wiring.svg` から変換した Draw.io XML（`.drawio`）。diagrams.net で読み込み・編集可能。 |
 | `integrated_wiring.drawio` | Integrated Wiring の `Aggregate` / `Detailed` を 2 ページで含む Draw.io XML。 |
+| `integrated_wiring_interactive.svg` | ブラウザで開くと media/rack チェックボックスで動的フィルタできる Integrated Wiring SVG。 |
 | `rack_occupancy.drawio` | Rack Occupancy を全ラックまとめて 1 シートで含む Draw.io XML。 |
 
 Trial / Project detail 画面には、`wiring.svg` を置き換えない追加機能として

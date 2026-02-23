@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import copy
+import xml.etree.ElementTree as ET
 
 from models import ProjectInput
 from services.allocator import allocate
 from services.export import (
     integrated_wiring_drawio,
+    integrated_wiring_interactive_svg,
     integrated_wiring_svg,
     rack_occupancy_drawio,
     svg_to_drawio,
@@ -224,6 +226,18 @@ def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
     assert "data:image/svg+xml," not in drawio
 
 
+def test_svg_to_drawio_applies_group_translate_transform() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="120">'
+        '<g transform="translate(100,20)"><text x="10" y="20" font-size="12">Rack B</text></g>'
+        "</svg>"
+    )
+    drawio = svg_to_drawio(svg, page_name="Translate")
+
+    assert "Rack B" in drawio
+    assert 'x="110.00"' in drawio
+
+
 def test_wiring_drawio_contains_encoded_wiring_svg() -> None:
     project = ProjectInput.model_validate(
         {
@@ -271,6 +285,44 @@ def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> Non
     assert 'name="Integrated Wiring (Detailed)"' in drawio
     assert drawio.count("<diagram ") >= 2
     assert "curved=1;" in drawio
+
+
+def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-interactive-svg"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+        }
+    )
+    result = allocate(project)
+
+    svg = integrated_wiring_interactive_svg(result, mode="aggregate")
+
+    assert svg.startswith("<svg")
+    assert "<foreignObject" in svg
+    assert 'data-role="integrated-media"' in svg
+    assert 'data-role="integrated-rack"' in svg
+    assert ".integrated-filterable" in svg
+    assert "Legend" in svg
+    assert "background:#7c3aed" in svg
+
+
+def test_integrated_wiring_interactive_svg_is_well_formed_xml() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-interactive-xml"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [{"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}],
+        }
+    )
+    result = allocate(project)
+
+    svg = integrated_wiring_interactive_svg(result, mode="aggregate")
+
+    ET.fromstring(svg)
 
 
 def test_rack_occupancy_drawio_is_combined_into_single_page() -> None:
