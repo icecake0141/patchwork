@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- This file was created or modified with the assistance of an AI (Large Language Model). -->
 # Overview
 
 This implementation follows the v0 design spec for rack-to-rack cabling allocation:
@@ -56,6 +58,24 @@ UI pages:
 - Trial
 - Project detail
 - Diff (logical + physical tabs)
+
+## Integrated Wiring View
+
+Trial / Project detail includes an additional **Integrated Wiring View** that overlays
+inter-rack wiring on Rack Occupancy coordinates (`rack`, `u`, `slot`).
+
+Purpose:
+- Keep panel-slot location context while inspecting end-to-end cabling.
+- Provide a quick switch between cable-level aggregation and session-level detail.
+
+Constraints and behavior:
+- Existing `wiring.svg` export remains unchanged; integrated view is additive UI output.
+- Rendering groups sessions by `(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)`.
+- Group-internal ordering is `(src_port, dst_port)` ascending.
+- Overlap reduction is minimal lane offset by index inside each group.
+- Fixed media colors: `mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`.
+- UI interactions are lightweight (no external JS): wheel zoom, drag pan, hover highlight,
+  mode toggle, and media filter.
 
 ## 日本語訳
 

@@ -16,7 +16,7 @@ from yaml import YAMLError
 from db import Database
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import bom_csv, result_json, sessions_csv, wiring_svg
+from services.export import bom_csv, integrated_wiring_svg, result_json, sessions_csv, wiring_svg
 from services.render_svg import render_pair_detail_svg, render_rack_panels_svg
 
 
@@ -81,12 +81,21 @@ def create_app() -> Flask:
         racks = sorted({p["rack_id"] for p in result["panels"]})
         rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
         wiring_svg_text = wiring_svg(result)
+        integrated_wiring_svgs = {
+            "aggregate": integrated_wiring_svg(result, mode="aggregate"),
+            "detailed": integrated_wiring_svg(result, mode="detailed"),
+        }
+        integrated_media_types = ["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
+        integrated_racks = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
         return render_template(
             "trial.html",
             result=result,
             topology_rows=topology_rows,
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
+            integrated_wiring_svgs=integrated_wiring_svgs,
+            integrated_media_types=integrated_media_types,
+            integrated_racks=integrated_racks,
         )
 
     @app.post("/save")
@@ -120,6 +129,9 @@ def create_app() -> Flask:
         topology_rows: list[dict[str, str | int]] = []
         rack_svgs: dict[str, str] = {}
         wiring_svg_text = ""
+        integrated_wiring_svgs = {"aggregate": "", "detailed": ""}
+        integrated_media_types = ["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
+        integrated_racks: list[str] = []
         if result:
             topology_counts: dict[tuple[str, str, str], int] = {}
             for session_row in result["sessions"]:
@@ -133,6 +145,11 @@ def create_app() -> Flask:
             racks = sorted({panel["rack_id"] for panel in result["panels"]})
             rack_svgs = {rack: render_rack_panels_svg(result, rack) for rack in racks}
             wiring_svg_text = wiring_svg(result)
+            integrated_wiring_svgs = {
+                "aggregate": integrated_wiring_svg(result, mode="aggregate"),
+                "detailed": integrated_wiring_svg(result, mode="detailed"),
+            }
+            integrated_racks = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
         return render_template(
             "project_detail.html",
             project_id=project_id,
@@ -142,6 +159,9 @@ def create_app() -> Flask:
             topology_rows=topology_rows,
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
+            integrated_wiring_svgs=integrated_wiring_svgs,
+            integrated_media_types=integrated_media_types,
+            integrated_racks=integrated_racks,
         )
 
     @app.get("/revisions/<revision_id>/export/sessions.csv")

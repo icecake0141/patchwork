@@ -2,9 +2,11 @@
 # This file was created or modified with the assistance of an AI (Large Language Model).
 from __future__ import annotations
 
+import copy
+
 from models import ProjectInput
 from services.allocator import allocate
-from services.export import wiring_svg
+from services.export import integrated_wiring_svg, wiring_svg
 
 
 def test_wiring_svg_contains_expected_labels() -> None:
@@ -49,3 +51,147 @@ def test_wiring_svg_sorts_ports_in_ascending_order() -> None:
 
     assert i1 != -1 and i2 != -1 and i3 != -1
     assert i1 < i2 < i3
+
+
+def test_integrated_wiring_svg_contains_title_and_grouping_text() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-title"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 2}
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = integrated_wiring_svg(result, mode="aggregate")
+
+    assert svg.startswith("<svg")
+    assert "Integrated Wiring View" in svg
+    assert "Grouped by panel/slot pair" in svg
+
+
+def test_integrated_wiring_svg_detailed_port_sorting() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-sort"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 3}
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = integrated_wiring_svg(result, mode="detailed")
+
+    i1 = svg.find("P1→P1")
+    i2 = svg.find("P2→P2")
+    i3 = svg.find("P3→P3")
+
+    assert i1 != -1 and i2 != -1 and i3 != -1
+    assert i1 < i2 < i3
+
+
+def test_integrated_wiring_svg_mode_changes_wire_count() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-mode"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 2,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+    patched = copy.deepcopy(result)
+    patched["sessions"][1]["cable_id"] = patched["sessions"][0]["cable_id"]
+
+    svg_aggregate = integrated_wiring_svg(patched, mode="aggregate")
+    svg_detailed = integrated_wiring_svg(patched, mode="detailed")
+
+    aggregate_count = svg_aggregate.count('class="integrated-wire ')
+    detailed_count = svg_detailed.count('class="integrated-wire ')
+
+    assert aggregate_count == 1
+    assert detailed_count == 2
+
+
+def test_integrated_wiring_svg_media_filter_excludes_other_media() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-media"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 1,
+                },
+                {"id": "D2", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1},
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = integrated_wiring_svg(result, mode="detailed", media_filter=["mpo12"])
+
+    assert 'data-media="mpo12"' in svg
+    assert 'data-media="mmf_lc_duplex"' not in svg
+
+
+def test_integrated_wiring_svg_contains_rack_metadata_for_filtering() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-rack-filter"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = integrated_wiring_svg(result, mode="detailed")
+
+    assert 'data-src-rack="R1"' in svg
+    assert 'data-dst-rack="R2"' in svg
+    assert 'class="integrated-rack-element"' in svg
+
+
+def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-port-label"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 1,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+    detailed_svg = integrated_wiring_svg(result, mode="detailed")
+    aggregate_svg = integrated_wiring_svg(result, mode="aggregate")
+
+    assert 'class="integrated-port-label integrated-rack-element"' in detailed_svg
+    assert detailed_svg.count(">P1</text>") >= 2
+    assert "Front" in detailed_svg
+    assert "Rear" in detailed_svg
+    assert "P1→P1" in aggregate_svg

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- This file was created or modified with the assistance of an AI (Large Language Model). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -231,6 +233,76 @@
       height: auto;
       display: block;
     }
+
+    .integrated-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .integrated-controls fieldset {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin: 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .integrated-controls legend {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    .integrated-legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 6px 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .integrated-legend-item {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .integrated-legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    .integrated-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      background: var(--surface);
+    }
+
+    .integrated-scroll svg {
+      max-width: none;
+      cursor: grab;
+    }
+
+    .integrated-scroll svg.panning {
+      cursor: grabbing;
+    }
+
+    .integrated-wire-hover {
+      stroke-width: 3 !important;
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
@@ -292,6 +364,194 @@
       if (getStoredTheme() === "system") {
         applyTheme("system");
       }
+    });
+  })();
+
+  (() => {
+    const mediaColors = {
+      mmf_lc_duplex: "#2563eb",
+      smf_lc_duplex: "#16a34a",
+      mpo12: "#7c3aed",
+      utp_rj45: "#ea580c",
+    };
+
+    const viewportStates = new WeakMap();
+
+    const getMode = (card) => {
+      const selected = card.querySelector('input[data-role="integrated-mode"]:checked');
+      return selected ? selected.value : "aggregate";
+    };
+
+    const getActiveSvg = (card) => {
+      const mode = getMode(card);
+      const panel = card.querySelector(`[data-role="integrated-mode-panel"][data-mode="${mode}"]`);
+      return panel ? panel.querySelector("svg") : null;
+    };
+
+    const getSelectedMedia = (card) =>
+      new Set(
+        Array.from(card.querySelectorAll('input[data-role="integrated-media"]:checked')).map(
+          (input) => input.value
+        )
+      );
+
+    const getSelectedRacks = (card) =>
+      new Set(
+        Array.from(card.querySelectorAll('input[data-role="integrated-rack"]:checked')).map(
+          (input) => input.value
+        )
+      );
+
+    const applyViewport = (svg) => {
+      if (!svg) {
+        return;
+      }
+      const viewport = svg.querySelector('g[data-role="viewport"]');
+      if (!viewport) {
+        return;
+      }
+      const state = viewportStates.get(svg) || { scale: 1, tx: 0, ty: 0 };
+      viewport.setAttribute(
+        "transform",
+        `translate(${state.tx},${state.ty}) scale(${state.scale})`
+      );
+    };
+
+    const resetViewport = (svg) => {
+      if (!svg) {
+        return;
+      }
+      viewportStates.set(svg, { scale: 1, tx: 0, ty: 0 });
+      applyViewport(svg);
+    };
+
+    const bindPanZoom = (svg) => {
+      if (!svg || svg.dataset.panZoomBound === "1") {
+        return;
+      }
+      svg.dataset.panZoomBound = "1";
+      let isDragging = false;
+      let lastX = 0;
+      let lastY = 0;
+
+      if (!viewportStates.has(svg)) {
+        viewportStates.set(svg, { scale: 1, tx: 0, ty: 0 });
+      }
+      applyViewport(svg);
+
+      svg.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const state = viewportStates.get(svg) || { scale: 1, tx: 0, ty: 0 };
+        const nextScale = Math.min(4, Math.max(0.6, state.scale * (event.deltaY < 0 ? 1.1 : 0.9)));
+        viewportStates.set(svg, { ...state, scale: nextScale });
+        applyViewport(svg);
+      });
+
+      svg.addEventListener("mousedown", (event) => {
+        isDragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        svg.classList.add("panning");
+      });
+
+      window.addEventListener("mousemove", (event) => {
+        if (!isDragging) {
+          return;
+        }
+        const state = viewportStates.get(svg) || { scale: 1, tx: 0, ty: 0 };
+        const dx = event.clientX - lastX;
+        const dy = event.clientY - lastY;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        viewportStates.set(svg, { ...state, tx: state.tx + dx, ty: state.ty + dy });
+        applyViewport(svg);
+      });
+
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
+        svg.classList.remove("panning");
+      });
+    };
+
+    const bindHover = (svg) => {
+      if (!svg || svg.dataset.hoverBound === "1") {
+        return;
+      }
+      svg.dataset.hoverBound = "1";
+      svg.addEventListener("mouseover", (event) => {
+        const wire = event.target.closest(".integrated-wire");
+        if (!wire) {
+          return;
+        }
+        wire.classList.add("integrated-wire-hover");
+      });
+      svg.addEventListener("mouseout", (event) => {
+        const wire = event.target.closest(".integrated-wire");
+        if (!wire) {
+          return;
+        }
+        wire.classList.remove("integrated-wire-hover");
+      });
+    };
+
+    const applyFilters = (card) => {
+      const selectedMedia = getSelectedMedia(card);
+      const selectedRacks = getSelectedRacks(card);
+      const svg = getActiveSvg(card);
+      if (!svg) {
+        return;
+      }
+      svg.querySelectorAll(".integrated-filterable").forEach((wire) => {
+        const media = wire.getAttribute("data-media") || "";
+        const srcRack = wire.getAttribute("data-src-rack") || "";
+        const dstRack = wire.getAttribute("data-dst-rack") || "";
+        const mediaVisible = selectedMedia.has(media);
+        const rackVisible = selectedRacks.has(srcRack) && selectedRacks.has(dstRack);
+        wire.style.display = mediaVisible && rackVisible ? "" : "none";
+      });
+      svg.querySelectorAll(".integrated-rack-element").forEach((element) => {
+        const rack = element.getAttribute("data-rack") || "";
+        element.style.display = selectedRacks.has(rack) ? "" : "none";
+      });
+    };
+
+    const applyMode = (card) => {
+      const mode = getMode(card);
+      card
+        .querySelectorAll('[data-role="integrated-mode-panel"]')
+        .forEach((panel) => {
+          panel.style.display = panel.getAttribute("data-mode") === mode ? "block" : "none";
+        });
+      const svg = getActiveSvg(card);
+      bindPanZoom(svg);
+      bindHover(svg);
+      applyFilters(card);
+      if (svg && !viewportStates.has(svg)) {
+        resetViewport(svg);
+      }
+    };
+
+    document.querySelectorAll('[data-role="integrated-card"]').forEach((card) => {
+      card.querySelectorAll('input[data-role="integrated-mode"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyMode(card);
+        });
+      });
+      card.querySelectorAll('input[data-role="integrated-media"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyFilters(card);
+        });
+      });
+      card.querySelectorAll('input[data-role="integrated-rack"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyFilters(card);
+        });
+      });
+      card.querySelectorAll('[data-role="integrated-legend-color"]').forEach((item) => {
+        const media = item.getAttribute("data-media") || "";
+        item.style.background = mediaColors[media] || "#334155";
+      });
+      applyMode(card);
     });
   })();
 </script>

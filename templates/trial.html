@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- This file was created or modified with the assistance of an AI (Large Language Model). -->
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
@@ -31,6 +33,41 @@
 <div class="card">
   <h2>Cable Wiring Diagram</h2>
   <div>{{ wiring_svg|safe }}</div>
+</div>
+
+<div class="card" data-role="integrated-card">
+  <h2>Integrated Wiring View</h2>
+  <div class="integrated-controls">
+    <fieldset>
+      <legend>Mode</legend>
+      <label><input type="radio" name="integrated_mode_trial" value="aggregate" data-role="integrated-mode" checked> Aggregate</label>
+      <label><input type="radio" name="integrated_mode_trial" value="detailed" data-role="integrated-mode"> Detailed</label>
+    </fieldset>
+    <fieldset>
+      <legend>Media Filter</legend>
+      {% for media in integrated_media_types %}
+      <label><input type="checkbox" value="{{ media }}" data-role="integrated-media" checked> {{ media }}</label>
+      {% endfor %}
+    </fieldset>
+    <fieldset>
+      <legend>Rack Filter</legend>
+      {% for rack in integrated_racks %}
+      <label><input type="checkbox" value="{{ rack }}" data-role="integrated-rack" checked> {{ rack }}</label>
+      {% endfor %}
+    </fieldset>
+  </div>
+  <div class="integrated-legend">
+    {% for media in integrated_media_types %}
+    <span class="integrated-legend-item">
+      <span class="integrated-legend-color" data-role="integrated-legend-color" data-media="{{ media }}"></span>
+      {{ media }}
+    </span>
+    {% endfor %}
+  </div>
+  <div class="integrated-scroll">
+    <div data-role="integrated-mode-panel" data-mode="aggregate">{{ integrated_wiring_svgs.aggregate|safe }}</div>
+    <div data-role="integrated-mode-panel" data-mode="detailed" style="display:none">{{ integrated_wiring_svgs.detailed|safe }}</div>
+  </div>
 </div>
 
 <div class="card">

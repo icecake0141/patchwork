@@ -32,6 +32,7 @@ Patchwork helps data center operators design patch cabling layouts. You upload a
 - Flask Web UI with SQLite persistence.
 - Deterministic trial allocation for cabling plans.
 - SVG visualizations (topology, rack occupancy, pair details).
+- Integrated Wiring View (Rack Occupancy coordinate overlay with interactive cable paths).
 - Revision diff tracking for logical and physical changes.
 
 ### Requirements
@@ -156,6 +157,13 @@ After allocation Patchwork produces three downloadable files:
 | `result.json`  | Full structured allocation result (panels, modules, cables, sessions, metrics). |
 | `wiring.svg`   | Visual cable wiring diagram (one line per cable, with source/destination panel positions). |
 
+The Trial and Project detail pages also include an **Integrated Wiring View** for interactive
+inspection. This view is rendered in-page (not a replacement for `wiring.svg`) and supports:
+- Mode toggle: `Aggregate` (cable unit) / `Detailed` (session unit)
+- Media filter checkboxes (`mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`)
+- Hover highlighting, mouse-wheel zoom, and drag pan
+- Horizontal scroll container for wide topologies
+
 **`sessions.csv` excerpt:**
 ```
 project_id,revision_id,session_id,media,cable_id,cable_seq,adapter_type,label_a,label_b,...
@@ -228,6 +236,7 @@ Patchwork はデータセンターのラック間パッチ配線を設計する�
 - Flask 製の Web UI と SQLite の保存機能。
 - 配線計画の決定的な割り当てアルゴリズム。
 - SVG 可視化（トポロジー、ラック占有、ペア詳細）。
+- 統合配線ビュー（Rack Occupancy 座標を重ねたインタラクティブ配線表示）。
 - 論理／物理の差分（リビジョン）管理。
 
 ### 動作環境
@@ -330,6 +339,13 @@ demands:
 | `sessions.csv` | ポートごとのパッチ配線スケジュール（1 行 = 1 接続）。 |
 | `bom.csv`      | 部材表：パネル・モジュール・ケーブルの種別と数量。 |
 | `result.json`  | 全割り当て結果の構造化 JSON（パネル、モジュール、ケーブル、セッション、メトリクス）。 |
+
+Trial / Project detail 画面には、`wiring.svg` を置き換えない追加機能として
+**Integrated Wiring View** が表示されます。主な操作:
+- 表示モード切替: `Aggregate`（cable単位）/ `Detailed`（session単位）
+- media フィルタ: `mmf_lc_duplex` / `smf_lc_duplex` / `mpo12` / `utp_rj45`
+- ホバー強調、マウスホイールズーム、ドラッグパン
+- 幅超過時の横スクロール対応
 
 **`sessions.csv` の例（抜粋）：**
 ```
