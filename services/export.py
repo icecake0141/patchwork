@@ -765,13 +765,30 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         for media in media_types
     )
 
-    foreign_object = (
-        f'<foreignObject x="16" y="10" width="{max(320.0, width - 32.0):.0f}" height="26">'
-        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
-        '<span style="font-weight: 700;">Filter</span>'
-        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Media</strong>{media_controls}</span>'
-        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Racks</strong>{rack_controls}</span>'
-        f'<span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap;"><strong>Legend</strong>{legend_items}</span>'
+    controls_w = max(320.0, width - 32.0)
+    media_controls_object = (
+        f'<foreignObject x="16" y="8" width="{controls_w:.0f}" height="28">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 3px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
+        '<span style="font-weight: 700;">Media Filter</span>'
+        f"{media_controls}"
+        "</div>"
+        "</foreignObject>"
+    )
+
+    rack_controls_object = (
+        f'<foreignObject x="16" y="40" width="{controls_w:.0f}" height="28">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 3px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
+        '<span style="font-weight: 700;">Rack Filter</span>'
+        f"{rack_controls}"
+        "</div>"
+        "</foreignObject>"
+    )
+
+    legend_object = (
+        f'<foreignObject x="16" y="72" width="{controls_w:.0f}" height="28">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 3px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
+        '<span style="font-weight: 700;">Legend</span>'
+        f"{legend_items}"
         "</div>"
         "</foreignObject>"
     )
@@ -801,32 +818,51 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "})();]]></script>"
     )
 
-    start_index = base_svg.find(">")
-    end_index = base_svg.rfind("</svg>")
-    if start_index == -1 or end_index == -1:
-        return base_svg
-    inner = base_svg[start_index + 1 : end_index]
+    title_texts = {
+        "Integrated Wiring View",
+        "Overlay of Rack Occupancy coordinates with inter-rack wiring.",
+        "Grouped by panel/slot pair and sorted by source/destination port.",
+    }
+    content_parts: list[str] = []
+    for child in list(root):
+        tag = _tag_name(child.tag)
+        if tag == "rect":
+            if (
+                (child.get("x") in {"0", "0.0"})
+                and (child.get("y") in {"0", "0.0"})
+                and (child.get("fill") == "#ffffff")
+            ):
+                continue
+        if tag == "text":
+            text_value = "".join(child.itertext()).strip()
+            if text_value in title_texts:
+                continue
+        content_parts.append(ET.tostring(child, encoding="unicode"))
+    content_inner = "".join(content_parts)
 
-    shift_y = 42.0
-    new_height = height + shift_y
-    controls_y = 6.0
-    controls_h = 34.0
-    title_y = 40.0
-    title_h = 80.0
-    diagram_y = 122.0
+    controls_block_h = 104.0
+    title_y = controls_block_h + 6.0
+    title_h = 76.0
+    diagram_y = title_y + title_h + 8.0
+    shift_y = diagram_y
+    new_height = height + shift_y + 8.0
     diagram_h = max(100.0, new_height - diagram_y - 10.0)
 
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{new_height:.0f}" viewBox="0 0 {width:.0f} {new_height:.0f}" data-role="integrated-wiring">'
         '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>'
-        f'<rect x="10" y="{controls_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{controls_h:.0f}" fill="#f8fafc" stroke="#d1d5db"/>'
-        f'<text x="18" y="{controls_y + 13:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Controls / Legend</text>'
+        f'<rect x="10" y="4" width="{max(60.0, width - 20.0):.0f}" height="{controls_block_h:.0f}" fill="#f8fafc" stroke="#d1d5db"/>'
+        f'<text x="18" y="16" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Controls</text>'
         f'<rect x="10" y="{title_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{title_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
-        f'<text x="18" y="{title_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Title</text>'
+        f'<text x="20" y="{title_y + 38:.0f}" font-size="38" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">Integrated Wiring View</text>'
+        f'<text x="20" y="{title_y + 56:.0f}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>'
+        f'<text x="20" y="{title_y + 72:.0f}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>'
         f'<rect x="10" y="{diagram_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{diagram_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
         f'<text x="18" y="{diagram_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Wiring Diagram</text>'
-        f"{foreign_object}"
-        f'<g transform="translate(0,{shift_y:.0f})">{inner}</g>'
+        f"{media_controls_object}"
+        f"{rack_controls_object}"
+        f"{legend_object}"
+        f'<g transform="translate(0,{shift_y:.0f})">{content_inner}</g>'
         f"{script}"
         "</svg>"
     )
@@ -853,25 +889,26 @@ def rack_occupancy_drawio(result: dict[str, Any]) -> str:
 
     gap = 40.0
     margin = 20.0
-    total_width = (
-        margin * 2 + sum(width for width, _ in rack_sizes) + gap * max(0, len(rack_sizes) - 1)
+    total_width = margin * 2 + max((width for width, _ in rack_sizes), default=900.0)
+    total_height = (
+        margin * 2 + sum(height for _, height in rack_sizes) + gap * max(0, len(rack_sizes) - 1)
     )
-    total_height = margin * 2 + max((height for _, height in rack_sizes), default=200.0)
 
     chunks = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{total_width:.0f}" height="{total_height:.0f}" viewBox="0 0 {total_width:.0f} {total_height:.0f}">',
         '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>',
     ]
 
-    cursor_x = margin
+    cursor_y = margin
     for svg_text, (rack_w, _rack_h) in zip(rack_svgs, rack_sizes, strict=False):
         start_index = svg_text.find(">")
         end_index = svg_text.rfind("</svg>")
         inner = (
             svg_text[start_index + 1 : end_index] if start_index != -1 and end_index != -1 else ""
         )
-        chunks.append(f'<g transform="translate({cursor_x:.1f},{margin:.1f})">{inner}</g>')
-        cursor_x += rack_w + gap
+        centered_x = margin + max(0.0, (total_width - margin * 2 - rack_w) / 2)
+        chunks.append(f'<g transform="translate({centered_x:.1f},{cursor_y:.1f})">{inner}</g>')
+        cursor_y += _rack_h + gap
 
     chunks.append("</svg>")
     combined_svg = "".join(chunks)
