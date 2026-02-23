@@ -653,12 +653,32 @@ def integrated_wiring_svg(
             slot_module_type = module_type_by_slot.get((rack_id, u_value, slot_value), "empty")
             slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
             slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
-            if shown_ports == 0:
-                slot_state = "free"
-            elif shown_ports >= slot_capacity:
-                slot_state = "full"
+            effective_ports_set = set(ports_set)
+            occupancy_text = f"occ {shown_ports}/{slot_capacity}"
+            active_mpo_groups: set[int] = set()
+            if slot_module_type == "lc_breakout_2xmpo12_to_12xlcduplex":
+                active_mpo_groups = {1 if int(port) <= 6 else 2 for port in ports_set}
+                effective_ports_set = set()
+                for mpo_group in active_mpo_groups:
+                    if mpo_group == 1:
+                        effective_ports_set.update(range(1, 7))
+                    else:
+                        effective_ports_set.update(range(7, 13))
+                rear_used = len(active_mpo_groups)
+                occupancy_text = f"occ rear {rear_used}/2"
+                if rear_used == 0:
+                    slot_state = "free"
+                elif rear_used >= 2:
+                    slot_state = "full"
+                else:
+                    slot_state = "partial"
             else:
-                slot_state = "partial"
+                if shown_ports == 0:
+                    slot_state = "free"
+                elif shown_ports >= slot_capacity:
+                    slot_state = "full"
+                else:
+                    slot_state = "partial"
             slot_theme = _slot_state_theme(
                 slot_module_type,
                 slot_state,
@@ -693,7 +713,7 @@ def integrated_wiring_svg(
                 f'<text x="{x - 8}" y="{box_y - 5}" font-size="12" font-family="Arial, sans-serif" fill="#0f172a" font-weight="bold" class="integrated-rack-element" data-rack="{escape(rack_id)}">S{slot_value}</text>'
             )
             node_lines.append(
-                f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">occ {shown_ports}/{slot_capacity}</text>'
+                f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">{occupancy_text}</text>'
             )
             node_lines.append(
                 f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
@@ -733,6 +753,8 @@ def integrated_wiring_svg(
                 for mpo_index, group_ports in mpo_groups.items():
                     if not group_ports:
                         continue
+                    group_state = "occupied" if mpo_index in active_mpo_groups else "free"
+                    group_opacity = "0.95" if group_state == "occupied" else "0.30"
                     anchor_y = (
                         sum((port_row_y[int(port)] - 3.0) for port in group_ports) / len(group_ports)
                     )
@@ -748,17 +770,17 @@ def integrated_wiring_svg(
                         else rear_x - (mpo_anchor_w / 2.0)
                     )
                     node_lines.append(
-                        f'<rect x="{rear_x - mpo_anchor_w / 2}" y="{anchor_y - mpo_anchor_h / 2}" width="{mpo_anchor_w}" height="{mpo_anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="0.95" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="occupied" data-port-anchor="rear"/>'
+                        f'<rect x="{rear_x - mpo_anchor_w / 2}" y="{anchor_y - mpo_anchor_h / 2}" width="{mpo_anchor_w}" height="{mpo_anchor_h}" rx="1.2" ry="1.2" fill="{slot_theme["anchor_rear_fill"]}" stroke="{slot_theme["border"]}" opacity="{group_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{group_state}" data-port-anchor="rear"/>'
                     )
                     node_lines.append(
-                        f'<line x1="{rear_x - mpo_anchor_w / 2 + 1.0}" y1="{anchor_y - 1.4}" x2="{rear_x + mpo_anchor_w / 2 - 1.0}" y2="{anchor_y + 1.9}" stroke="{slot_theme["lane"]}" stroke-width="0.6" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="occupied"/>'
+                        f'<line x1="{rear_x - mpo_anchor_w / 2 + 1.0}" y1="{anchor_y - 1.4}" x2="{rear_x + mpo_anchor_w / 2 - 1.0}" y2="{anchor_y + 1.9}" stroke="{slot_theme["lane"]}" stroke-width="0.6" opacity="0.60" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{group_state}"/>'
                     )
                     node_lines.append(
-                        f'<text x="{rear_x}" y="{anchor_y + 2.4}" font-size="6.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-anchor-port-label="1">MPO{mpo_index}</text>'
+                        f'<text x="{rear_x}" y="{anchor_y + 2.4}" font-size="6.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#334155" opacity="{group_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{group_state}" data-anchor-port-label="1">MPO{mpo_index}</text>'
                     )
                     p_range_text = "P1-P6" if mpo_index == 1 else "P7-P12"
                     node_lines.append(
-                        f'<text x="{rear_x}" y="{anchor_y + 7.0}" font-size="5.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-anchor-port-label="1">{p_range_text}</text>'
+                        f'<text x="{rear_x}" y="{anchor_y + 7.0}" font-size="5.2" text-anchor="middle" font-family="Arial, sans-serif" fill="#475569" opacity="{group_opacity}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-port-state="{group_state}" data-anchor-port-label="1">{p_range_text}</text>'
                     )
                     for port in group_ports:
                         port_key = int(port)
@@ -790,7 +812,7 @@ def integrated_wiring_svg(
             for idx, port in enumerate(ordered_ports):
                 row_y = mapping_y + idx * mapping_row_h
                 anchor_y = row_y - 3
-                port_state = "occupied" if port in ports_set else "free"
+                port_state = "occupied" if port in effective_ports_set else "free"
                 line_opacity = "1.0" if port_state == "occupied" else "0.30"
                 port_key = int(port)
                 rear_anchor_w = rear_anchor_w_by_port.get(port_key, 14.0)
@@ -889,7 +911,7 @@ def integrated_wiring_svg(
 
                 rows = []
                 for (src_mpo, dst_mpo), mpo_sessions in sorted(mpo_groups.items()):
-                    if len(mpo_sessions) >= 6:
+                    if len(mpo_sessions) > 0:
                         src_anchor_port = 3 if src_mpo == 1 else 9
                         dst_anchor_port = 3 if dst_mpo == 1 else 9
                         trunk_count = len({str(s["cable_id"]) for s in mpo_sessions})

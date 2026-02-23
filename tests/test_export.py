@@ -134,7 +134,7 @@ def test_integrated_wiring_svg_mode_changes_wire_count() -> None:
     detailed_count = svg_detailed.count('class="integrated-wire ')
 
     assert aggregate_count == 1
-    assert detailed_count == 2
+    assert detailed_count == 1
 
 
 def test_integrated_wiring_svg_aggregate_uses_single_line_per_slot_mapping() -> None:
@@ -163,7 +163,7 @@ def test_integrated_wiring_svg_aggregate_uses_single_line_per_slot_mapping() -> 
     detailed_count = svg_detailed.count('class="integrated-wire ')
 
     assert aggregate_count == 1
-    assert detailed_count == 2
+    assert detailed_count == 1
     assert "U1S1↔U1S1" in svg_aggregate
 
 
@@ -237,7 +237,7 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert detailed_svg.count(">P1</text>") >= 2
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
-    assert "occ 1/12" in detailed_svg
+    assert "occ rear 1/2" in detailed_svg
     assert 'data-slot-state="partial"' in detailed_svg
     assert 'data-port-state="occupied"' in detailed_svg
     assert 'data-port-state="free"' in detailed_svg
@@ -246,7 +246,7 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert 'data-port-order="pair_asc"' in detailed_svg
     assert "Direction rule: Source column" in detailed_svg
     assert ">P12</text>" in detailed_svg
-    assert "P1→P1" in detailed_svg
+    assert "MPO1→MPO1" in detailed_svg
     assert "U1S1↔U1S1" in aggregate_svg
     assert "ses/" in aggregate_svg
 
@@ -407,7 +407,7 @@ def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> Non
     assert "jumpStyle=arc;" in drawio
     assert "Front" in drawio
     assert "Rear" in drawio
-    assert "occ 1/12" in drawio
+    assert "occ rear 1/2" in drawio
     assert "Direction rule: Source column" in drawio
 
 
@@ -572,3 +572,29 @@ def test_integrated_wiring_lc_breakout_uses_mpo_rear_labels() -> None:
     assert "MPO2→MPO2" in svg
     assert svg.count('class="integrated-wire ') == 2
     assert svg.count('data-port-anchor="rear"') == 4
+
+
+def test_integrated_wiring_lc_breakout_partial_demand_uses_rear_mpo_occupancy() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-lc-breakout-partial"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 4,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+
+    svg = integrated_wiring_svg(result, mode="detailed")
+
+    assert "occ rear 1/2" in svg
+    assert "MPO1→MPO1" in svg
+    assert 'data-port-state="occupied" data-anchor-port-label="1">P6</text>' in svg
