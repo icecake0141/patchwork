@@ -47,6 +47,23 @@ Use the smallest practical topology to understand input/output mapping.
 3. Open `sessions.csv` and verify only one rack pair exists.
 4. Check BOM has non-zero quantities for used media.
 
+## Screenshots (optional)
+- Upload page
+
+![Simple 2-rack upload page](../images/simple-2rack/upload-page.png)
+
+- Project detail page
+
+![Simple 2-rack project detail](../images/simple-2rack/project-detail.png)
+
+- Integrated Wiring (Aggregate)
+
+![Simple 2-rack integrated aggregate](../images/simple-2rack/integrated-aggregate.png)
+
+- Integrated Wiring (Detailed)
+
+![Simple 2-rack integrated detailed](../images/simple-2rack/integrated-detailed.png)
+
 ## Related docs
 - [Onboarding index](../README.en.md)
 - [Japanese version](simple-2rack.ja.md)

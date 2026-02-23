@@ -47,6 +47,23 @@ Review required for correctness, security, and licensing.
 3. `sessions.csv` でラックペアが1種類のみであることを確認
 4. BOM の使用メディアに対応する数量が 0 でないことを確認
 
+## スクリーンショット（任意）
+- Upload 画面
+
+![シンプル2ラック Upload 画面](../images/simple-2rack/upload-page.png)
+
+- Project detail 画面
+
+![シンプル2ラック Project detail 画面](../images/simple-2rack/project-detail.png)
+
+- Integrated Wiring（Aggregate）
+
+![シンプル2ラック Integrated Wiring Aggregate](../images/simple-2rack/integrated-aggregate.png)
+
+- Integrated Wiring（Detailed）
+
+![シンプル2ラック Integrated Wiring Detailed](../images/simple-2rack/integrated-detailed.png)
+
 ## 関連ドキュメント
 - [オンボーディング目次](../README.ja.md)
 - [English version](simple-2rack.en.md)

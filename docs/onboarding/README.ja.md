@@ -61,5 +61,10 @@ Review required for correctness, security, and licensing.
 - シナリオ記載の期待出力と突き合わせ
 - その後、実案件向けの YAML に展開
 
+## 8) スクリーンショット
+- スクリーンショットは `docs/onboarding/images/` 配下に配置できます。
+- 推奨のファイル名・配置は `docs/onboarding/images/README.md` を参照してください。
+- 実ファイルを配置すると、各シナリオページの画像リンクからそのまま参照できます。
+
 ## English version
 - [Onboarding Guide (English)](README.en.md)

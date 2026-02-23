@@ -59,5 +59,10 @@ For complete field reference, see `examples/quick-start/README.md` and `docs/api
 - Compare generated outputs against expectations in scenario docs.
 - Move to your production-like project definition.
 
+## 8) Screenshots
+- Add screenshots under `docs/onboarding/images/`.
+- Naming and location guide: `docs/onboarding/images/README.md`.
+- Scenario pages include direct image links once files are added.
+
 ## 日本語版
 - [オンボーディングガイド（日本語）](README.ja.md)
