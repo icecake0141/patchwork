@@ -334,40 +334,34 @@ def integrated_wiring_svg(
             continue
 
         if mode == "aggregate":
-            by_cable: dict[str, list[dict[str, Any]]] = defaultdict(list)
-            for session in sessions:
-                by_cable[str(session["cable_id"])].append(session)
-            aggregate_rows: list[dict[str, Any]] = []
-            for cable_id, cable_sessions in by_cable.items():
-                cable_sessions.sort(key=lambda s: (int(s["src_port"]), int(s["dst_port"])))
-                first = cable_sessions[0]
-                src_ports = [int(s["src_port"]) for s in cable_sessions]
-                dst_ports = [int(s["dst_port"]) for s in cable_sessions]
-                src_min = min(src_ports)
-                src_max = max(src_ports)
-                dst_min = min(dst_ports)
-                dst_max = max(dst_ports)
-                src_port_text = f"P{src_min}" if src_min == src_max else f"P{src_min}-{src_max}"
-                dst_port_text = f"P{dst_min}" if dst_min == dst_max else f"P{dst_min}-{dst_max}"
-                port_text = (
-                    f"P{src_min}→P{dst_min}"
-                    if src_min == src_max and dst_min == dst_max
-                    else f"P{src_min}-{src_max}→P{dst_min}-{dst_max}"
-                )
-                aggregate_rows.append(
-                    {
-                        "wire_id": cable_id,
-                        "media": media,
-                        "src_port": int(first["src_port"]),
-                        "dst_port": int(first["dst_port"]),
-                        "port_text": port_text,
-                        "src_port_text": src_port_text,
-                        "dst_port_text": dst_port_text,
-                        "label": f"#{cable_seq_map.get(cable_id, '')} {cable_id} ({len(cable_sessions)} session{'s' if len(cable_sessions) != 1 else ''})",
-                    }
-                )
-            aggregate_rows.sort(key=lambda row: (row["src_port"], row["dst_port"]))
-            rows = aggregate_rows
+            src_ports = [int(s["src_port"]) for s in sessions]
+            dst_ports = [int(s["dst_port"]) for s in sessions]
+            src_min = min(src_ports)
+            src_max = max(src_ports)
+            dst_min = min(dst_ports)
+            dst_max = max(dst_ports)
+            cable_count = len({str(s["cable_id"]) for s in sessions})
+            if src_min == src_max and dst_min == dst_max:
+                port_span_text = f"P{src_min}→P{dst_min}"
+            else:
+                port_span_text = f"P{src_min}-P{src_max}→P{dst_min}-P{dst_max}"
+
+            rows = [
+                {
+                    "wire_id": f"{src_rack}-{src_u}-{src_slot}__{dst_rack}-{dst_u}-{dst_slot}__{media}",
+                    "media": media,
+                    "src_port": src_min,
+                    "dst_port": dst_min,
+                    "port_text": (
+                        f"U{src_u}S{src_slot}↔U{dst_u}S{dst_slot} "
+                        f"({port_span_text}, {len(sessions)} ses/{cable_count} cab)"
+                    ),
+                    "label": (
+                        f"{src_rack} U{src_u}S{src_slot} ↔ {dst_rack} U{dst_u}S{dst_slot} "
+                        f"[{media}] {len(sessions)} sessions / {cable_count} cables"
+                    ),
+                }
+            ]
         else:
             rows = [
                 {
@@ -406,13 +400,14 @@ def integrated_wiring_svg(
 
             wire_id = escape(str(row["wire_id"]))
             label = escape(str(row["label"]))
+            stroke_width = "2.2" if mode == "aggregate" else "1.6"
             lines.append(
-                f'<path d="M {src_snap_x} {y1 + lane_offset} C {c1x} {c1y}, {c2x} {c2y}, {dst_snap_x} {y2 + lane_offset}" stroke="{color}" stroke-width="1.6" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}" data-group="{group_id}"><title>{label}</title></path>'
+                f'<path d="M {src_snap_x} {y1 + lane_offset} C {c1x} {c1y}, {c2x} {c2y}, {dst_snap_x} {y2 + lane_offset}" stroke="{color}" stroke-width="{stroke_width}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}" data-group="{group_id}"><title>{label}</title></path>'
             )
             if mode == "aggregate":
                 port_text = escape(str(row["port_text"]))
-                mid_x = (src_snap_x + dst_snap_x) / 2 + 6 + (10 if index % 2 else -10)
-                mid_y = (y1 + y2) / 2 + lane_offset - 4 + ((index % 3) - 1) * 9
+                mid_x = (src_snap_x + dst_snap_x) / 2 + 8
+                mid_y = (y1 + y2) / 2 + lane_offset - 6
                 lines.append(
                     f'<text x="{mid_x}" y="{mid_y}" font-size="10" font-family="Arial, sans-serif" fill="#1f2937" class="integrated-port-label integrated-filterable" data-wire-id="{wire_id}" data-media="{escape(media)}" data-src-rack="{escape(src_rack)}" data-dst-rack="{escape(dst_rack)}">{port_text}</text>'
                 )

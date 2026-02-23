@@ -179,7 +179,7 @@ After allocation Patchwork produces downloadable files:
 
 The Trial and Project detail pages also include an **Integrated Wiring View** for interactive
 inspection. This view is rendered in-page (not a replacement for `wiring.svg`) and supports:
-- Mode toggle: `Aggregate` (cable unit) / `Detailed` (session unit)
+- Mode toggle: `Aggregate` (slot-to-slot conceptual overview) / `Detailed` (session-level detail)
 - Media filter checkboxes (`mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`)
 - Hover highlighting, mouse-wheel zoom, and drag pan
 - Horizontal scroll container for wide topologies
@@ -391,7 +391,7 @@ demands:
 
 Trial / Project detail 画面には、`wiring.svg` を置き換えない追加機能として
 **Integrated Wiring View** が表示されます。主な操作:
-- 表示モード切替: `Aggregate`（cable単位）/ `Detailed`（session単位）
+- 表示モード切替: `Aggregate`（slot間の概念対応図）/ `Detailed`（session単位の詳細図）
 - media フィルタ: `mmf_lc_duplex` / `smf_lc_duplex` / `mpo12` / `utp_rj45`
 - ホバー強調、マウスホイールズーム、ドラッグパン
 - 幅超過時の横スクロール対応

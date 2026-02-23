@@ -135,6 +135,36 @@ def test_integrated_wiring_svg_mode_changes_wire_count() -> None:
     assert detailed_count == 2
 
 
+def test_integrated_wiring_svg_aggregate_uses_single_line_per_slot_mapping() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-aggregate-concept"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {
+                    "id": "D1",
+                    "src": "R1",
+                    "dst": "R2",
+                    "endpoint_type": "mmf_lc_duplex",
+                    "count": 2,
+                }
+            ],
+        }
+    )
+    result = allocate(project)
+
+    svg_aggregate = integrated_wiring_svg(result, mode="aggregate")
+    svg_detailed = integrated_wiring_svg(result, mode="detailed")
+
+    aggregate_count = svg_aggregate.count('class="integrated-wire ')
+    detailed_count = svg_detailed.count('class="integrated-wire ')
+
+    assert aggregate_count == 1
+    assert detailed_count == 2
+    assert "U1S1↔U1S1" in svg_aggregate
+
+
 def test_integrated_wiring_svg_media_filter_excludes_other_media() -> None:
     project = ProjectInput.model_validate(
         {
@@ -205,7 +235,8 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert "Front" in detailed_svg
     assert "Rear" in detailed_svg
     assert "P1→P1" in detailed_svg
-    assert "P1→P1" in aggregate_svg
+    assert "U1S1↔U1S1" in aggregate_svg
+    assert "ses/" in aggregate_svg
 
 
 def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
