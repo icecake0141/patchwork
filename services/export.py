@@ -189,6 +189,25 @@ def _integrated_wire_gap_overlays(wire_entries: list[dict[str, Any]]) -> list[di
     return deduped
 
 
+def _integrated_gap_scale(
+    wire_count: int,
+    overlay_count: int,
+    overlays_on_wire: int = 0,
+) -> float:
+    """Return adaptive scale for SVG crossing gap/bridge size.
+
+    As line density increases, the crossing jump is reduced to avoid visual clutter.
+    """
+    wire_density = max(0.0, (wire_count - 40.0) / 120.0)
+    overlay_density = max(0.0, (overlay_count - 60.0) / 220.0)
+    local_density = max(0.0, (overlays_on_wire - 3.0) / 12.0)
+
+    density_score = min(1.0, max(wire_density, overlay_density))
+    base_scale = 1.0 - 0.50 * density_score
+    local_scale = 1.0 - 0.20 * min(1.0, local_density)
+    return max(0.45, min(1.0, base_scale * local_scale))
+
+
 def sessions_csv(result: dict[str, Any], project_id: str, revision_id: str | None = None) -> str:
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", "") for c in result.get("cables", [])}
     buf = io.StringIO()
@@ -599,11 +618,24 @@ def integrated_wiring_svg(
             f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}"><title>{escape(wire["label"])}</title></path>'
         )
 
-    for overlay in _integrated_wire_gap_overlays(wire_entries):
+    overlays = _integrated_wire_gap_overlays(wire_entries)
+    overlays_by_over_wire: Counter[str] = Counter(
+        str(overlay["over"]["wire_id"]) for overlay in overlays
+    )
+
+    for overlay in overlays:
         over_wire = overlay["over"]
         under_wire = overlay["under"]
-        gap_radius = max(2.8, max(under_wire["stroke_width"], over_wire["stroke_width"]) * 1.9)
-        bridge_half_len = max(4.0, over_wire["stroke_width"] * 2.8)
+        scale = _integrated_gap_scale(
+            wire_count=len(wire_entries),
+            overlay_count=len(overlays),
+            overlays_on_wire=overlays_by_over_wire.get(str(over_wire["wire_id"]), 0),
+        )
+        gap_radius = max(
+            2.0,
+            max(under_wire["stroke_width"], over_wire["stroke_width"]) * 1.9 * scale,
+        )
+        bridge_half_len = max(3.0, over_wire["stroke_width"] * 2.8 * scale)
         x = overlay["x"]
         y = overlay["y"]
         dx = overlay["dx"]
@@ -613,10 +645,10 @@ def integrated_wiring_svg(
         bx2 = x + dx * bridge_half_len
         by2 = y + dy * bridge_half_len
         lines.append(
-            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{gap_radius:.2f}" fill="#ffffff" class="integrated-wire-gap integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}"/>'
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{gap_radius:.2f}" fill="#ffffff" class="integrated-wire-gap integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}" data-gap-center-x="{x:.2f}" data-gap-center-y="{y:.2f}" data-gap-base-radius="{gap_radius:.3f}" data-gap-auto-scale="{scale:.3f}"/>'
         )
         lines.append(
-            f'<line x1="{bx1:.2f}" y1="{by1:.2f}" x2="{bx2:.2f}" y2="{by2:.2f}" stroke="{over_wire["color"]}" stroke-width="{over_wire["stroke_width"]}" stroke-linecap="round" opacity="0.90" class="integrated-wire-overpass integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}"/>'
+            f'<line x1="{bx1:.2f}" y1="{by1:.2f}" x2="{bx2:.2f}" y2="{by2:.2f}" stroke="{over_wire["color"]}" stroke-width="{over_wire["stroke_width"]}" stroke-linecap="round" opacity="0.90" class="integrated-wire-overpass integrated-filterable" data-wire-id="{escape(over_wire["wire_id"])}" data-media="{escape(over_wire["media"])}" data-src-rack="{escape(over_wire["src_rack"])}" data-dst-rack="{escape(over_wire["dst_rack"])}" data-gap-center-x="{x:.2f}" data-gap-center-y="{y:.2f}" data-gap-dx="{dx:.5f}" data-gap-dy="{dy:.5f}" data-gap-base-half-len="{bridge_half_len:.3f}" data-gap-auto-scale="{scale:.3f}"/>'
         )
 
     lines.extend(wire_label_lines)

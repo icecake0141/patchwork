@@ -411,6 +411,53 @@
         )
       );
 
+    const getGapScaleFactor = (card) => {
+      const select = card.querySelector('select[data-role="integrated-gap-scale"]');
+      const value = select ? Number.parseFloat(select.value) : 1.0;
+      return Number.isFinite(value) && value > 0 ? value : 1.0;
+    };
+
+    const applyGapScale = (svg, factor) => {
+      if (!svg) {
+        return;
+      }
+      const safeFactor = Math.max(0.5, Math.min(2.0, factor));
+
+      svg.querySelectorAll(".integrated-wire-gap").forEach((element) => {
+        const baseRadius = Number.parseFloat(element.getAttribute("data-gap-base-radius") || "0");
+        const autoScale = Number.parseFloat(element.getAttribute("data-gap-auto-scale") || "1");
+        if (!Number.isFinite(baseRadius) || baseRadius <= 0) {
+          return;
+        }
+        const value = Math.max(1.6, baseRadius * autoScale * safeFactor);
+        element.setAttribute("r", value.toFixed(2));
+      });
+
+      svg.querySelectorAll(".integrated-wire-overpass").forEach((element) => {
+        const cx = Number.parseFloat(element.getAttribute("data-gap-center-x") || "nan");
+        const cy = Number.parseFloat(element.getAttribute("data-gap-center-y") || "nan");
+        const dx = Number.parseFloat(element.getAttribute("data-gap-dx") || "nan");
+        const dy = Number.parseFloat(element.getAttribute("data-gap-dy") || "nan");
+        const baseHalfLen = Number.parseFloat(element.getAttribute("data-gap-base-half-len") || "0");
+        const autoScale = Number.parseFloat(element.getAttribute("data-gap-auto-scale") || "1");
+        if (
+          !Number.isFinite(cx)
+          || !Number.isFinite(cy)
+          || !Number.isFinite(dx)
+          || !Number.isFinite(dy)
+          || !Number.isFinite(baseHalfLen)
+          || baseHalfLen <= 0
+        ) {
+          return;
+        }
+        const halfLen = Math.max(2.2, baseHalfLen * autoScale * safeFactor);
+        element.setAttribute("x1", (cx - dx * halfLen).toFixed(2));
+        element.setAttribute("y1", (cy - dy * halfLen).toFixed(2));
+        element.setAttribute("x2", (cx + dx * halfLen).toFixed(2));
+        element.setAttribute("y2", (cy + dy * halfLen).toFixed(2));
+      });
+    };
+
     const applyViewport = (svg) => {
       if (!svg) {
         return;
@@ -541,6 +588,7 @@
     const applyFilters = (card) => {
       const selectedMedia = getSelectedMedia(card);
       const selectedRacks = getSelectedRacks(card);
+      const gapScaleFactor = getGapScaleFactor(card);
       let highlightedWireId = getHighlightedWireId(card);
       const svg = getActiveSvg(card);
       if (!svg) {
@@ -586,6 +634,7 @@
         const rack = element.getAttribute("data-rack") || "";
         element.style.display = selectedRacks.has(rack) ? "" : "none";
       });
+      applyGapScale(svg, gapScaleFactor);
     };
 
     const applyMode = (card) => {
@@ -618,6 +667,11 @@
       });
       card.querySelectorAll('input[data-role="integrated-rack"]').forEach((input) => {
         input.addEventListener("change", () => {
+          applyFilters(card);
+        });
+      });
+      card.querySelectorAll('select[data-role="integrated-gap-scale"]').forEach((select) => {
+        select.addEventListener("change", () => {
           applyFilters(card);
         });
       });

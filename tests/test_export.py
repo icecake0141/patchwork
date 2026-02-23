@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from models import ProjectInput
 from services.allocator import allocate
 from services.export import (
+    _integrated_gap_scale,
     _integrated_wire_gap_overlays,
     integrated_wiring_drawio,
     integrated_wiring_interactive_svg,
@@ -274,6 +275,15 @@ def test_integrated_wire_gap_overlays_detects_crossing() -> None:
     assert abs(overlays[0]["x"] - 60.0) < 1.5
     assert abs(overlays[0]["y"] - 60.0) < 1.5
     assert overlays[0]["over"]["wire_id"] == "w2"
+
+
+def test_integrated_gap_scale_reduces_in_high_density() -> None:
+    low_density = _integrated_gap_scale(wire_count=20, overlay_count=10, overlays_on_wire=1)
+    high_density = _integrated_gap_scale(wire_count=220, overlay_count=360, overlays_on_wire=20)
+
+    assert 0.45 <= low_density <= 1.0
+    assert 0.45 <= high_density <= 1.0
+    assert high_density < low_density
 
 
 def test_svg_to_drawio_converts_svg_primitives_to_editable_cells() -> None:
