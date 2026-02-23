@@ -240,6 +240,7 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert 'data-slot-state="partial"' in detailed_svg
     assert 'data-port-state="occupied"' in detailed_svg
     assert 'data-port-state="free"' in detailed_svg
+    assert 'data-anchor-port-label="1"' in detailed_svg
     assert 'data-direction="src-to-dst"' in detailed_svg
     assert 'data-port-order="pair_asc"' in detailed_svg
     assert "Direction rule: Source column" in detailed_svg
@@ -442,10 +443,13 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     assert 'data-role="integrated-media"' in svg
     assert 'data-role="integrated-rack"' in svg
     assert 'data-role="integrated-port-state"' in svg
+    assert 'data-role="integrated-anchor-label-toggle"' in svg
     assert 'value="occupied" checked="checked"' in svg
     assert 'value="free" />free' in svg
     assert ".integrated-filterable" in svg
     assert "Port State" in svg
+    assert "Anchor Label" in svg
+    assert "show P# in anchor box" in svg
     assert "Legend" in svg
     assert "Direction rule: Source column" in svg
     assert "background:#7c3aed" in svg

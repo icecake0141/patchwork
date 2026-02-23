@@ -85,6 +85,8 @@ def test_acceptance_smoke_ui_and_exports_by_scenario(
         assert b"Port State" in trial_response.data
         assert b"occupied" in trial_response.data
         assert b"free" in trial_response.data
+        assert b"Anchor Label" in trial_response.data
+        assert b"show P# in anchor box" in trial_response.data
         assert b'value="occupied" data-role="integrated-port-state" checked' in trial_response.data
         assert b'value="free" data-role="integrated-port-state"> free' in trial_response.data
         assert b"Auto \xc3\x97 0.50" in trial_response.data

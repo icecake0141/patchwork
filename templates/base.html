@@ -418,6 +418,11 @@
         )
       );
 
+    const getShowAnchorLabels = (card) => {
+      const toggle = card.querySelector('input[data-role="integrated-anchor-label-toggle"]');
+      return Boolean(toggle && toggle.checked);
+    };
+
     const getGapScaleFactor = (card) => {
       const select = card.querySelector('select[data-role="integrated-gap-scale"]');
       const value = select ? Number.parseFloat(select.value) : 1.0;
@@ -596,6 +601,7 @@
       const selectedMedia = getSelectedMedia(card);
       const selectedRacks = getSelectedRacks(card);
       const selectedPortStates = getSelectedPortStates(card);
+      const showAnchorLabels = getShowAnchorLabels(card);
       const gapScaleFactor = getGapScaleFactor(card);
       let highlightedWireId = getHighlightedWireId(card);
       const svg = getActiveSvg(card);
@@ -650,6 +656,14 @@
         const stateVisible = selectedPortStates.has(portState);
         element.style.display = rackVisible && stateVisible ? "" : "none";
       });
+
+      svg.querySelectorAll('[data-anchor-port-label]').forEach((element) => {
+        const rack = element.getAttribute("data-rack") || "";
+        const portState = element.getAttribute("data-port-state") || "";
+        const rackVisible = !rack || selectedRacks.has(rack);
+        const stateVisible = selectedPortStates.has(portState);
+        element.style.display = showAnchorLabels && rackVisible && stateVisible ? "" : "none";
+      });
       applyGapScale(svg, gapScaleFactor);
     };
 
@@ -687,6 +701,11 @@
         });
       });
       card.querySelectorAll('input[data-role="integrated-port-state"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyFilters(card);
+        });
+      });
+      card.querySelectorAll('input[data-role="integrated-anchor-label-toggle"]').forEach((input) => {
         input.addEventListener("change", () => {
           applyFilters(card);
         });
