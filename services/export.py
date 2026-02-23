@@ -60,6 +60,13 @@ SLOT_PORT_CAPACITY = {
     "lc_breakout_2xmpo12_to_12xlcduplex": 12,
 }
 
+RACK_OCCUPANCY_MODULE_COLORS = {
+    "empty": "#555555",
+    "mpo12_pass_through_12port": "#FF00FF",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "#87CEEB",
+    "utp_6xrj45": "#90EE90",
+}
+
 MEDIA_LAYOUT_PROFILES: dict[str, dict[str, Any]] = {
     "mmf_lc_duplex": {
         "layout_id": "lc_duplex",
@@ -127,35 +134,32 @@ def _ordered_ports_for_layout(profile: dict[str, Any], capacity: int) -> list[in
     return list(range(1, capacity + 1))
 
 
-def _slot_state_theme(slot_state: str) -> dict[str, str]:
+def _slot_state_theme(module_type: str, slot_state: str) -> dict[str, str]:
+    base = RACK_OCCUPANCY_MODULE_COLORS.get(module_type, "#94a3b8")
     if slot_state == "full":
-        return {
-            "slot_fill": "#fee2e2",
-            "front_fill": "#fff5f5",
-            "rear_fill": "#fee2e2",
-            "anchor_front_fill": "#fff5f5",
-            "anchor_rear_fill": "#fee2e2",
-            "border": "#fca5a5",
-            "lane": "#fca5a5",
-        }
-    if slot_state == "partial":
-        return {
-            "slot_fill": "#fef3c7",
-            "front_fill": "#fff9e8",
-            "rear_fill": "#fef3c7",
-            "anchor_front_fill": "#fff9e8",
-            "anchor_rear_fill": "#fef3c7",
-            "border": "#fcd34d",
-            "lane": "#f59e0b",
-        }
+        slot_opacity = "0.26"
+        front_opacity = "0.18"
+        rear_opacity = "0.30"
+    elif slot_state == "partial":
+        slot_opacity = "0.20"
+        front_opacity = "0.14"
+        rear_opacity = "0.24"
+    else:
+        slot_opacity = "0.12"
+        front_opacity = "0.09"
+        rear_opacity = "0.16"
+
     return {
-        "slot_fill": "#f1f5f9",
-        "front_fill": "#f8fafc",
-        "rear_fill": "#e2e8f0",
-        "anchor_front_fill": "#f8fafc",
-        "anchor_rear_fill": "#e2e8f0",
-        "border": "#cbd5e1",
-        "lane": "#94a3b8",
+        "slot_fill": base,
+        "front_fill": base,
+        "rear_fill": base,
+        "anchor_front_fill": "#ffffff",
+        "anchor_rear_fill": "#ffffff",
+        "border": base,
+        "lane": base,
+        "slot_opacity": slot_opacity,
+        "front_opacity": front_opacity,
+        "rear_opacity": rear_opacity,
     }
 
 
@@ -489,6 +493,12 @@ def integrated_wiring_svg(
         )
         for module in result.get("modules", [])
     }
+    module_type_by_slot: dict[tuple[str, int, int], str] = {
+        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): str(
+            module.get("module_type", "empty")
+        )
+        for module in result.get("modules", [])
+    }
     module_layout_by_slot: dict[tuple[str, int, int], dict[str, Any]] = {
         (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): _module_layout_profile(
             str(module.get("module_type", "")),
@@ -648,29 +658,32 @@ def integrated_wiring_svg(
                 slot_state = "full"
             else:
                 slot_state = "partial"
-            slot_theme = _slot_state_theme(slot_state)
+            slot_theme = _slot_state_theme(
+                module_type_by_slot.get((rack_id, u_value, slot_value), "empty"),
+                slot_state,
+            )
 
             box_h = 24 + slot_capacity * mapping_row_h + slot_inner_bottom
             box_y = y - box_h / 2
             box_x = min(front_x, rear_x) - 12
             box_w = abs(rear_x - front_x) + 24
             node_lines.append(
-                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="{slot_theme["slot_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
+                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="{slot_theme["slot_fill"]}" fill-opacity="{slot_theme["slot_opacity"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
             )
             col_w = 22
             front_col_x = front_x - col_w / 2
             rear_col_x = rear_x - col_w / 2
             node_lines.append(
-                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["front_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                f'<rect x="{front_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["front_fill"]}" fill-opacity="{slot_theme["front_opacity"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
             )
             node_lines.append(
-                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["rear_fill"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                f'<rect x="{rear_col_x}" y="{box_y + 18}" width="{col_w}" height="{box_h - 22}" fill="{slot_theme["rear_fill"]}" fill-opacity="{slot_theme["rear_opacity"]}" stroke="{slot_theme["border"]}" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
             )
-            rear_lane_start_y = int(box_y + 21)
-            rear_lane_end_y = int(box_y + box_h - 4)
-            for lane_y in range(rear_lane_start_y, rear_lane_end_y, 5):
+            rear_lane_start_y = int(box_y + 19)
+            rear_lane_end_y = int(box_y + box_h - 6)
+            for lane_y in range(rear_lane_start_y, rear_lane_end_y, 6):
                 node_lines.append(
-                    f'<line x1="{rear_col_x + 2}" y1="{lane_y}" x2="{rear_col_x + col_w - 2}" y2="{lane_y}" stroke="{slot_theme["lane"]}" stroke-width="0.5" opacity="0.55" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                    f'<line x1="{rear_col_x + 1.2}" y1="{lane_y}" x2="{rear_col_x + col_w - 1.2}" y2="{lane_y + 4.2}" stroke="{slot_theme["lane"]}" stroke-width="0.6" opacity="0.55" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
                 )
             node_lines.append(
                 f'<line x1="{x}" y1="{box_y + 18}" x2="{x}" y2="{box_y + box_h - 2}" stroke="#94a3b8" stroke-width="1" class="integrated-rack-element" data-rack="{escape(rack_id)}"/>'
