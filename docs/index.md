@@ -10,6 +10,7 @@ Welcome — this directory contains the project documentation.
 Contents
 - `api.md` — API surface and endpoint descriptions.
 - `overview.md` — implementation overview and allocation behavior notes.
+- `integrated-wiring-user-guide.md` — one-page user guide and fixed feature-difference matrix.
 - `index.md` — this file.
 - `quick-start.md` or `examples/quick-start/README.md` — quick start guide.
 - `onboarding/README.en.md` / `onboarding/README.ja.md` — first-time user input/output guide (2-rack and 4-rack scenarios).
@@ -26,6 +27,7 @@ Link to main README for setup and validation commands.
 内容:
 - `api.md` — API の公開面とエンドポイント説明。
 - `overview.md` — 実装概要と割り当て挙動の補足。
+- `integrated-wiring-user-guide.md` — 利用者向け1ページガイドと機能差分マトリクス。
 - `index.md` — このファイル。
 - `quick-start.md` または `examples/quick-start/README.md` — クイックスタートガイド。
 - `onboarding/README.en.md` / `onboarding/README.ja.md` — 初見ユーザ向けの入出力ガイド（2ラック・4ラックのシナリオ）。

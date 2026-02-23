@@ -234,7 +234,7 @@ def test_trial_page_shows_bom_table(tmp_path) -> None:
     assert b"Bill of Materials" in trial_resp.data
     assert b"item_type" in trial_resp.data
     assert b"quantity" in trial_resp.data
-    assert b"click a wire or port label to focus it" in trial_resp.data
+    assert b"click wire/label to focus" in trial_resp.data
     assert b"Gap Jump Scale" in trial_resp.data
     assert b"Auto \xc3\x97 0.50" in trial_resp.data
     assert b"Auto \xc3\x97 1.25" in trial_resp.data
@@ -271,7 +271,7 @@ def test_project_detail_shows_bom_table(tmp_path) -> None:
     assert b"item_type" in resp.data
     assert b"description" in resp.data
     assert b"quantity" in resp.data
-    assert b"click a wire or port label to focus it" in resp.data
+    assert b"click wire/label to focus" in resp.data
     assert b"Gap Jump Scale" in resp.data
     assert b"Auto \xc3\x97 0.50" in resp.data
     assert b"Auto \xc3\x97 1.50" in resp.data

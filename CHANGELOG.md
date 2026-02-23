@@ -21,6 +21,9 @@ Review required for correctness, security, and licensing.
 - Added integrated interactive SVG export and in-page interaction upgrades:
     media/rack filters, click-to-focus highlighting, and Gap Jump Scale controls.
 - Added BoM table visibility in Trial/Project UI and reorganized download links with grouped English descriptions.
+- Known constraints / next steps:
+    - Draw.io exports prioritize editability and crossing readability; interactive filter/focus controls are SVG-only.
+    - Future: add visual regression snapshots and scenario-based E2E acceptance checks in CI artifacts.
 
 ## 0.1.0
 - Rebuilt the application from scratch based on the v0 design spec.
