@@ -1066,7 +1066,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
     port_state_controls = "".join(
         [
             '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="occupied" checked="checked" />occupied</label>',
-            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" checked="checked" />free</label>',
+            '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-port-state" value="free" />free</label>',
         ]
     )
     legend_items = "".join(

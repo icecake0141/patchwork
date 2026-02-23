@@ -436,6 +436,8 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     assert 'data-role="integrated-media"' in svg
     assert 'data-role="integrated-rack"' in svg
     assert 'data-role="integrated-port-state"' in svg
+    assert 'value="occupied" checked="checked"' in svg
+    assert 'value="free" />free' in svg
     assert ".integrated-filterable" in svg
     assert "Port State" in svg
     assert "Legend" in svg
