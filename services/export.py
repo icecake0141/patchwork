@@ -60,6 +60,72 @@ SLOT_PORT_CAPACITY = {
     "lc_breakout_2xmpo12_to_12xlcduplex": 12,
 }
 
+MEDIA_LAYOUT_PROFILES: dict[str, dict[str, Any]] = {
+    "mmf_lc_duplex": {
+        "layout_id": "lc_duplex",
+        "port_order": "pair_asc",
+        "pair_span": 2,
+        "label": "LC pair",
+    },
+    "smf_lc_duplex": {
+        "layout_id": "lc_duplex",
+        "port_order": "pair_asc",
+        "pair_span": 2,
+        "label": "LC pair",
+    },
+    "mpo12": {
+        "layout_id": "mpo12",
+        "port_order": "lane_asc",
+        "pair_span": 12,
+        "label": "MPO lane",
+    },
+    "utp_rj45": {
+        "layout_id": "utp_rj45",
+        "port_order": "pin_asc",
+        "pair_span": 1,
+        "label": "UTP pin",
+    },
+}
+
+MODULE_LAYOUT_MEDIA = {
+    "utp_6xrj45": "utp_rj45",
+    "mpo12_pass_through_12port": "mpo12",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "mmf_lc_duplex",
+}
+
+
+def _media_layout_profile(media: str) -> dict[str, Any]:
+    return MEDIA_LAYOUT_PROFILES.get(
+        media,
+        {
+            "layout_id": "generic",
+            "port_order": "asc",
+            "pair_span": 1,
+            "label": "Generic",
+        },
+    )
+
+
+def _module_layout_profile(module_type: str, fiber_kind: str | None = None) -> dict[str, Any]:
+    media = MODULE_LAYOUT_MEDIA.get(module_type, "")
+    if module_type == "lc_breakout_2xmpo12_to_12xlcduplex" and fiber_kind == "smf":
+        media = "smf_lc_duplex"
+    return _media_layout_profile(media)
+
+
+def _media_port_sort_key(media: str, src_port: int, dst_port: int) -> tuple[int, int, int, int]:
+    profile = _media_layout_profile(media)
+    pair_span = max(1, int(profile.get("pair_span", 1)))
+    pair_group = (src_port - 1) // pair_span
+    intra_pair = (src_port - 1) % pair_span
+    return (pair_group, intra_pair, src_port, dst_port)
+
+
+def _ordered_ports_for_layout(profile: dict[str, Any], capacity: int) -> list[int]:
+    if capacity <= 0:
+        return []
+    return list(range(1, capacity + 1))
+
 
 def _cubic_point(
     curve: tuple[float, float, float, float, float, float, float, float], t: float
@@ -391,6 +457,13 @@ def integrated_wiring_svg(
         )
         for module in result.get("modules", [])
     }
+    module_layout_by_slot: dict[tuple[str, int, int], dict[str, Any]] = {
+        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): _module_layout_profile(
+            str(module.get("module_type", "")),
+            str(module.get("fiber_kind")) if module.get("fiber_kind") else None,
+        )
+        for module in result.get("modules", [])
+    }
 
     grouped_sessions: dict[tuple[str, int, int, str, int, int, str], list[dict[str, Any]]] = (
         defaultdict(list)
@@ -417,7 +490,10 @@ def integrated_wiring_svg(
 
     sorted_group_keys = sorted(grouped_sessions.keys())
     for key in sorted_group_keys:
-        grouped_sessions[key].sort(key=lambda s: (int(s["src_port"]), int(s["dst_port"])))
+        media = str(key[6])
+        grouped_sessions[key].sort(
+            key=lambda s: _media_port_sort_key(media, int(s["src_port"]), int(s["dst_port"]))
+        )
 
     max_ports_per_slot = max(
         [
@@ -483,6 +559,7 @@ def integrated_wiring_svg(
         '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Integrated Wiring View</text>',
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>',
         '<text x="20" y="72" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>',
+        '<text x="20" y="92" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Direction rule: Source column → Destination column, with media-specific fixed port order.</text>',
         '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="56" width="100%" height="100%"/></clipPath></defs>',
         '<g data-role="viewport" clip-path="url(#integrated-viewport-clip)">',
     ]
@@ -615,6 +692,7 @@ def integrated_wiring_svg(
                     "label": str(row["label"]),
                     "path_d": path_d,
                     "curve": wire_curve,
+                    "port_order": _media_layout_profile(media).get("port_order", "asc"),
                 }
             )
             wire_order += 1
@@ -636,7 +714,7 @@ def integrated_wiring_svg(
 
     for wire in wire_entries:
         lines.append(
-            f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}"><title>{escape(wire["label"])}</title></path>'
+            f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}" data-direction="src-to-dst" data-port-order="{escape(str(wire["port_order"]))}"><title>{escape(wire["label"])} </title></path>'
         )
 
     overlays = _integrated_wire_gap_overlays(wire_entries)
@@ -685,6 +763,12 @@ def integrated_wiring_svg(
             shown_ports = len(ports)
             slot_capacity = module_capacity_by_slot.get((rack_id, u_value, slot_value), shown_ports)
             slot_capacity = max(slot_capacity, shown_ports)
+            slot_layout_profile = module_layout_by_slot.get(
+                (rack_id, u_value, slot_value),
+                _media_layout_profile(""),
+            )
+            slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
+            slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
             if shown_ports == 0:
                 slot_state = "free"
             elif shown_ports >= slot_capacity:
@@ -696,7 +780,7 @@ def integrated_wiring_svg(
             box_x = min(front_x, rear_x) - 12
             box_w = abs(rear_x - front_x) + 24
             lines.append(
-                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="none" stroke="#94a3b8" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}"/>'
+                f'<rect x="{box_x}" y="{box_y}" width="{box_w}" height="{box_h}" fill="none" stroke="#94a3b8" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}" data-layout-id="{escape(str(slot_layout_profile.get("layout_id", "generic")))}" data-port-order="{escape(slot_port_order)}"/>'
             )
             col_w = 22
             front_col_x = front_x - col_w / 2
@@ -716,6 +800,9 @@ def integrated_wiring_svg(
             lines.append(
                 f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">occ {shown_ports}/{slot_capacity}</text>'
             )
+            lines.append(
+                f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
+            )
             front_label_x = front_x - 26 if rear_dx > 0 else front_x + 6
             rear_label_x = rear_x + 6 if rear_dx > 0 else rear_x - 28
             lines.append(
@@ -725,7 +812,8 @@ def integrated_wiring_svg(
                 f'<text x="{rear_label_x}" y="{box_y + 14}" font-size="9" font-family="Arial, sans-serif" fill="#334155" class="integrated-rack-element" data-rack="{escape(rack_id)}">Rear</text>'
             )
             mapping_y = box_y + slot_inner_top + 6
-            for idx, port in enumerate(range(1, slot_capacity + 1)):
+            ordered_ports = _ordered_ports_for_layout(slot_layout_profile, slot_capacity)
+            for idx, port in enumerate(ordered_ports):
                 row_y = mapping_y + idx * mapping_row_h
                 port_state = "occupied" if port in ports_set else "free"
                 line_opacity = "1.0" if port_state == "occupied" else "0.30"
@@ -1168,6 +1256,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         "Integrated Wiring View",
         "Overlay of Rack Occupancy coordinates with inter-rack wiring.",
         "Grouped by panel/slot pair and sorted by source/destination port.",
+        "Direction rule: Source column → Destination column, with media-specific fixed port order.",
     }
     content_parts: list[str] = []
     for child in list(root):
@@ -1188,7 +1277,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
 
     controls_block_h = 136.0
     title_y = controls_block_h + 6.0
-    title_h = 76.0
+    title_h = 96.0
     diagram_y = title_y + title_h + 8.0
     shift_y = diagram_y
     new_height = height + shift_y + 8.0
@@ -1203,6 +1292,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         f'<text x="20" y="{title_y + 38:.0f}" font-size="38" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">Integrated Wiring View</text>'
         f'<text x="20" y="{title_y + 56:.0f}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>'
         f'<text x="20" y="{title_y + 72:.0f}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>'
+        f'<text x="20" y="{title_y + 88:.0f}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Direction rule: Source column → Destination column, with media-specific fixed port order.</text>'
         f'<rect x="10" y="{diagram_y:.0f}" width="{max(60.0, width - 20.0):.0f}" height="{diagram_h:.0f}" fill="#ffffff" stroke="#d1d5db"/>'
         f'<text x="18" y="{diagram_y + 14:.0f}" font-size="11" font-family="Arial, sans-serif" font-weight="bold" fill="#0f172a">Wiring Diagram</text>'
         f"{media_controls_object}"

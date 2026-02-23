@@ -240,6 +240,9 @@ def test_integrated_wiring_svg_draws_visible_port_labels() -> None:
     assert 'data-slot-state="partial"' in detailed_svg
     assert 'data-port-state="occupied"' in detailed_svg
     assert 'data-port-state="free"' in detailed_svg
+    assert 'data-direction="src-to-dst"' in detailed_svg
+    assert 'data-port-order="pair_asc"' in detailed_svg
+    assert "Direction rule: Source column" in detailed_svg
     assert ">P12</text>" in detailed_svg
     assert "P1→P1" in detailed_svg
     assert "U1S1↔U1S1" in aggregate_svg
@@ -268,6 +271,8 @@ def test_integrated_wiring_svg_shows_utp_slot_capacity() -> None:
 
     assert "occ 1/6" in detailed_svg
     assert 'data-slot-state="partial"' in detailed_svg
+    assert 'data-port-order="pin_asc"' in detailed_svg
+    assert "UTP pin / pin_asc" in detailed_svg
     assert ">P6</text>" in detailed_svg
 
 
@@ -401,6 +406,7 @@ def test_integrated_wiring_drawio_contains_aggregate_and_detailed_pages() -> Non
     assert "Front" in drawio
     assert "Rear" in drawio
     assert "occ 1/12" in drawio
+    assert "Direction rule: Source column" in drawio
 
 
 def test_svg_to_drawio_preserves_opacity_style() -> None:
@@ -441,6 +447,7 @@ def test_integrated_wiring_interactive_svg_contains_checkbox_filters() -> None:
     assert ".integrated-filterable" in svg
     assert "Port State" in svg
     assert "Legend" in svg
+    assert "Direction rule: Source column" in svg
     assert "background:#7c3aed" in svg
 
 
