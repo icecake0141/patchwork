@@ -400,9 +400,17 @@
       return selected ? selected.value : "aggregate";
     };
 
+    const getRouteMode = (card) => {
+      const selected = card.querySelector('input[data-role="integrated-route"]:checked');
+      return selected ? selected.value : "direct";
+    };
+
     const getActiveSvg = (card) => {
       const mode = getMode(card);
-      const panel = card.querySelector(`[data-role="integrated-mode-panel"][data-mode="${mode}"]`);
+      const routeMode = getRouteMode(card);
+      const panel = card.querySelector(
+        `[data-role="integrated-mode-panel"][data-mode="${mode}"][data-route="${routeMode}"]`
+      );
       return panel ? panel.querySelector("svg") : null;
     };
 
@@ -678,10 +686,13 @@
 
     const applyMode = (card) => {
       const mode = getMode(card);
+      const routeMode = getRouteMode(card);
       card
         .querySelectorAll('[data-role="integrated-mode-panel"]')
         .forEach((panel) => {
-          panel.style.display = panel.getAttribute("data-mode") === mode ? "block" : "none";
+          const panelMode = panel.getAttribute("data-mode");
+          const panelRoute = panel.getAttribute("data-route") || "direct";
+          panel.style.display = panelMode === mode && panelRoute === routeMode ? "block" : "none";
         });
       const svg = getActiveSvg(card);
       bindPanZoom(svg);
@@ -695,6 +706,11 @@
 
     document.querySelectorAll('[data-role="integrated-card"]').forEach((card) => {
       card.querySelectorAll('input[data-role="integrated-mode"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          applyMode(card);
+        });
+      });
+      card.querySelectorAll('input[data-role="integrated-route"]').forEach((input) => {
         input.addEventListener("change", () => {
           applyMode(card);
         });

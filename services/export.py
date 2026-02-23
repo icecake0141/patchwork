@@ -480,9 +480,12 @@ def integrated_wiring_svg(
     result: dict[str, Any],
     mode: str = "aggregate",
     media_filter: list[str] | set[str] | tuple[str, ...] | None = None,
+    route_mode: str = "direct",
 ) -> str:
     if mode not in {"aggregate", "detailed"}:
         raise ValueError("mode must be 'aggregate' or 'detailed'")
+    if route_mode not in {"direct", "detour", "highway", "stagger"}:
+        raise ValueError("route_mode must be one of: direct, detour, highway, stagger")
 
     selected_media = set(media_filter) if media_filter is not None else set(MEDIA_COLORS.keys())
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", "") for c in result.get("cables", [])}
@@ -579,6 +582,10 @@ def integrated_wiring_svg(
     slot_step = max(104, slot_box_h_max + 20)
     u_step = max(320, slot_step * max_slots_per_u + 110)
     top = 110
+    rack_y_offset = {
+        rack_id: (float(slot_step) if route_mode == "stagger" and idx % 2 == 1 else 0.0)
+        for idx, rack_id in enumerate(rack_ids)
+    }
 
     node_positions: dict[tuple[str, int, int], tuple[float, float]] = {}
     panel_defs: dict[str, list[tuple[int, int]]] = defaultdict(list)
@@ -588,7 +595,7 @@ def integrated_wiring_svg(
         slots_per_u = int(panel.get("slots_per_u", 1))
         panel_defs[rack_id].append((u_value, slots_per_u))
         for slot in range(1, slots_per_u + 1):
-            panel_y = top + (u_value - 1) * u_step
+            panel_y = top + (u_value - 1) * u_step + rack_y_offset[rack_id]
             y = panel_y + 18 + (slot_box_h_max / 2) + (slot - 1) * slot_step
             node_positions[(rack_id, u_value, slot)] = (rack_x[rack_id], y)
 
@@ -602,6 +609,7 @@ def integrated_wiring_svg(
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Overlay of Rack Occupancy coordinates with inter-rack wiring.</text>',
         '<text x="20" y="72" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair and sorted by source/destination port.</text>',
         '<text x="20" y="92" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Direction rule: Source column → Destination column, with media-specific fixed port order.</text>',
+        f'<text x="20" y="108" font-size="11" fill="#64748b" font-family="Arial, sans-serif">Routing mode: {escape(route_mode)}</text>',
         '<defs><clipPath id="integrated-viewport-clip"><rect x="0" y="56" width="100%" height="100%"/></clipPath></defs>',
         '<g data-role="viewport" clip-path="url(#integrated-viewport-clip)">',
     ]
@@ -617,7 +625,7 @@ def integrated_wiring_svg(
             f'<text x="{x - 32}" y="{top - 24}" font-size="30" font-family="Arial, sans-serif" font-weight="bold" fill="#111827" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(rack_id)}</text>'
         )
         for u_value, slots_per_u in sorted(panel_defs[rack_id], key=lambda value: value[0]):
-            panel_y = top + (u_value - 1) * u_step
+            panel_y = top + (u_value - 1) * u_step + rack_y_offset[rack_id]
             panel_h = 36 + slot_box_h_max + (slots_per_u - 1) * slot_step
             lines.append(
                 f'<rect x="{x - 78}" y="{panel_y}" width="156" height="{panel_h}" fill="#f8fafc" stroke="#cbd5e1" class="integrated-rack-element" data-rack="{escape(rack_id)}"/>'
@@ -967,6 +975,15 @@ def integrated_wiring_svg(
             continue
 
         group_id = escape(f"{src_rack}_{src_u}_{src_slot}__{dst_rack}_{dst_u}_{dst_slot}__{media}")
+        src_rack_x = rack_x.get(src_rack, 0.0)
+        dst_rack_x = rack_x.get(dst_rack, 0.0)
+        min_rack_x = min(src_rack_x, dst_rack_x)
+        max_rack_x = max(src_rack_x, dst_rack_x)
+        has_between_rack = any(
+            min_rack_x < rack_x[candidate] < max_rack_x
+            for candidate in rack_ids
+            if candidate not in {src_rack, dst_rack}
+        )
         for index, row in enumerate(rows):
             lane_offset = (index - (total - 1) / 2) * 8.0
             x1, y1 = src_pos
@@ -999,22 +1016,50 @@ def integrated_wiring_svg(
             c1y = y1 + lane_offset
             c2y = y2 + lane_offset
 
+            use_top_route = False
+            if route_mode == "highway":
+                use_top_route = True
+            elif route_mode == "detour" and has_between_rack:
+                use_top_route = True
+
+            if use_top_route:
+                top_lane_base = 64.0
+                top_lane = top_lane_base + (wire_order % 10) * 8.0
+                if route_mode == "highway":
+                    c1y = y1
+                    c2y = y2
+                else:
+                    c1y = top_lane
+                    c2y = top_lane
+
             wire_id = escape(str(row["wire_id"]))
             stroke_width = 2.2 if mode == "aggregate" else 1.6
-            wire_curve = (
-                src_snap_x,
-                y1,
-                c1x,
-                c1y,
-                c2x,
-                c2y,
-                dst_snap_x,
-                y2,
-            )
-            path_d = (
-                f"M {wire_curve[0]} {wire_curve[1]} "
-                f"C {wire_curve[2]} {wire_curve[3]}, {wire_curve[4]} {wire_curve[5]}, {wire_curve[6]} {wire_curve[7]}"
-            )
+            wire_curve: tuple[float, float, float, float, float, float, float, float] | None
+            if route_mode == "highway":
+                top_lane_base = 64.0
+                top_lane = top_lane_base + (wire_order % 10) * 8.0
+                path_d = (
+                    f"M {src_snap_x} {y1} "
+                    f"L {src_snap_x} {top_lane} "
+                    f"L {dst_snap_x} {top_lane} "
+                    f"L {dst_snap_x} {y2}"
+                )
+                wire_curve = None
+            else:
+                wire_curve = (
+                    src_snap_x,
+                    y1,
+                    c1x,
+                    c1y,
+                    c2x,
+                    c2y,
+                    dst_snap_x,
+                    y2,
+                )
+                path_d = (
+                    f"M {wire_curve[0]} {wire_curve[1]} "
+                    f"C {wire_curve[2]} {wire_curve[3]}, {wire_curve[4]} {wire_curve[5]}, {wire_curve[6]} {wire_curve[7]}"
+                )
             wire_entries.append(
                 {
                     "order": wire_order,
@@ -1055,7 +1100,8 @@ def integrated_wiring_svg(
             f'<path d="{wire["path_d"]}" stroke="{wire["color"]}" stroke-width="{wire["stroke_width"]}" fill="none" opacity="0.85" class="integrated-wire integrated-filterable" data-wire-id="{escape(wire["wire_id"])}" data-media="{escape(wire["media"])}" data-src-rack="{escape(wire["src_rack"])}" data-dst-rack="{escape(wire["dst_rack"])}" data-group="{wire["group"]}" data-direction="src-to-dst" data-port-order="{escape(str(wire["port_order"]))}"><title>{escape(wire["label"])} </title></path>'
         )
 
-    overlays = _integrated_wire_gap_overlays(wire_entries)
+    curved_wire_entries = [entry for entry in wire_entries if entry.get("curve") is not None]
+    overlays = _integrated_wire_gap_overlays(curved_wire_entries)
     overlays_by_over_wire: Counter[str] = Counter(
         str(overlay["over"]["wire_id"]) for overlay in overlays
     )

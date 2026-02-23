@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import re
 import xml.etree.ElementTree as ET
 
 from models import ProjectInput
@@ -614,3 +615,50 @@ def test_integrated_wiring_lc_breakout_partial_demand_uses_rear_mpo_occupancy() 
     assert "occ rear 1/2" in svg
     assert "MPO1→MPO1" in svg
     assert 'data-port-state="occupied" data-anchor-port-label="1">P6</text>' in svg
+
+
+def test_integrated_wiring_svg_route_modes_are_rendered() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-route-modes"},
+            "racks": [
+                {"id": "R01", "name": "R01"},
+                {"id": "R02", "name": "R02"},
+                {"id": "R03", "name": "R03"},
+            ],
+            "demands": [
+                {"id": "D1", "src": "R01", "dst": "R03", "endpoint_type": "mpo12", "count": 1},
+                {"id": "D2", "src": "R02", "dst": "R03", "endpoint_type": "mpo12", "count": 1},
+            ],
+        }
+    )
+    result = allocate(project)
+
+    svg_direct = integrated_wiring_svg(result, mode="aggregate", route_mode="direct")
+    svg_detour = integrated_wiring_svg(result, mode="aggregate", route_mode="detour")
+    svg_highway = integrated_wiring_svg(result, mode="aggregate", route_mode="highway")
+    svg_stagger = integrated_wiring_svg(result, mode="aggregate", route_mode="stagger")
+
+    assert "Routing mode: direct" in svg_direct
+    assert "Routing mode: detour" in svg_detour
+    assert "Routing mode: highway" in svg_highway
+    assert "Routing mode: stagger" in svg_stagger
+
+    highway_paths = re.findall(r'<path d="([^"]+)"[^>]*class="integrated-wire', svg_highway)
+    assert highway_paths
+    assert all(" C " not in path_d for path_d in highway_paths)
+    assert all(" L " in path_d for path_d in highway_paths)
+    highway_lane_y = {
+        float(match.group(1))
+        for path_d in highway_paths
+        for match in [re.search(r"L\s+[-0-9.]+\s+([-0-9.]+)\s+L", path_d)]
+        if match is not None
+    }
+    assert len(highway_lane_y) >= 2
+
+    direct_r02 = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"', svg_direct)
+    stagger_r02 = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="156" height="([0-9.]+)"[^>]*data-rack="R02"', svg_stagger)
+    assert direct_r02 is not None
+    assert stagger_r02 is not None
+    assert float(stagger_r02.group(2)) - float(direct_r02.group(2)) >= 100.0

@@ -59,6 +59,12 @@
       <label><input type="radio" name="integrated_mode_trial" value="detailed" data-role="integrated-mode"> Detailed</label>
     </fieldset>
     <fieldset>
+      <legend>Route</legend>
+      {% for route_mode in integrated_route_modes %}
+      <label><input type="radio" name="integrated_route_trial" value="{{ route_mode }}" data-role="integrated-route" {% if route_mode == "direct" %}checked{% endif %}> {{ route_mode }}</label>
+      {% endfor %}
+    </fieldset>
+    <fieldset>
       <legend>Media Filter</legend>
       {% for media in integrated_media_types %}
       <label><input type="checkbox" value="{{ media }}" data-role="integrated-media" checked> {{ media }}</label>
@@ -126,8 +132,10 @@
     </span>
   </div>
   <div class="integrated-scroll">
-    <div data-role="integrated-mode-panel" data-mode="aggregate">{{ integrated_wiring_svgs.aggregate|safe }}</div>
-    <div data-role="integrated-mode-panel" data-mode="detailed" style="display:none">{{ integrated_wiring_svgs.detailed|safe }}</div>
+    {% for route_mode in integrated_route_modes %}
+    <div data-role="integrated-mode-panel" data-mode="aggregate" data-route="{{ route_mode }}" {% if route_mode != "direct" %}style="display:none"{% endif %}>{{ integrated_wiring_svgs[route_mode].aggregate|safe }}</div>
+    <div data-role="integrated-mode-panel" data-mode="detailed" data-route="{{ route_mode }}" style="display:none">{{ integrated_wiring_svgs[route_mode].detailed|safe }}</div>
+    {% endfor %}
   </div>
 </div>
 

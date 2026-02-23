@@ -98,9 +98,21 @@ def create_app() -> Flask:
             for rack in racks
         }
         wiring_svg_text = wiring_svg(result)
+        integrated_route_modes = ["direct", "detour", "highway", "stagger"]
         integrated_wiring_svgs = {
-            "aggregate": integrated_wiring_svg(result, mode="aggregate"),
-            "detailed": integrated_wiring_svg(result, mode="detailed"),
+            route_mode: {
+                "aggregate": integrated_wiring_svg(
+                    result,
+                    mode="aggregate",
+                    route_mode=route_mode,
+                ),
+                "detailed": integrated_wiring_svg(
+                    result,
+                    mode="detailed",
+                    route_mode=route_mode,
+                ),
+            }
+            for route_mode in integrated_route_modes
         }
         integrated_media_types = ["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
         integrated_racks = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
@@ -112,6 +124,7 @@ def create_app() -> Flask:
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
             integrated_wiring_svgs=integrated_wiring_svgs,
+            integrated_route_modes=integrated_route_modes,
             integrated_media_types=integrated_media_types,
             integrated_racks=integrated_racks,
         )
@@ -148,7 +161,11 @@ def create_app() -> Flask:
         bom_table_rows: list[dict[str, Any]] = []
         rack_svgs: dict[str, str] = {}
         wiring_svg_text = ""
-        integrated_wiring_svgs = {"aggregate": "", "detailed": ""}
+        integrated_route_modes = ["direct", "detour", "highway", "stagger"]
+        integrated_wiring_svgs = {
+            route_mode: {"aggregate": "", "detailed": ""}
+            for route_mode in integrated_route_modes
+        }
         integrated_media_types = ["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
         integrated_racks: list[str] = []
         if result:
@@ -170,8 +187,19 @@ def create_app() -> Flask:
             }
             wiring_svg_text = wiring_svg(result)
             integrated_wiring_svgs = {
-                "aggregate": integrated_wiring_svg(result, mode="aggregate"),
-                "detailed": integrated_wiring_svg(result, mode="detailed"),
+                route_mode: {
+                    "aggregate": integrated_wiring_svg(
+                        result,
+                        mode="aggregate",
+                        route_mode=route_mode,
+                    ),
+                    "detailed": integrated_wiring_svg(
+                        result,
+                        mode="detailed",
+                        route_mode=route_mode,
+                    ),
+                }
+                for route_mode in integrated_route_modes
             }
             integrated_racks = sorted({str(panel["rack_id"]) for panel in result.get("panels", [])})
         return render_template(
@@ -185,6 +213,7 @@ def create_app() -> Flask:
             rack_svgs=rack_svgs,
             wiring_svg=wiring_svg_text,
             integrated_wiring_svgs=integrated_wiring_svgs,
+            integrated_route_modes=integrated_route_modes,
             integrated_media_types=integrated_media_types,
             integrated_racks=integrated_racks,
         )

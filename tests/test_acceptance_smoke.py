@@ -85,6 +85,11 @@ def test_acceptance_smoke_ui_and_exports_by_scenario(
         assert b"Port State" in trial_response.data
         assert b"occupied" in trial_response.data
         assert b"free" in trial_response.data
+        assert b"Route" in trial_response.data
+        assert b"direct" in trial_response.data
+        assert b"detour" in trial_response.data
+        assert b"highway" in trial_response.data
+        assert b"stagger" in trial_response.data
         assert b"Anchor Label" in trial_response.data
         assert b"show P# in anchor box" in trial_response.data
         assert b">Wiring<" in trial_response.data
