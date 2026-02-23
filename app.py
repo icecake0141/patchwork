@@ -163,8 +163,7 @@ def create_app() -> Flask:
         wiring_svg_text = ""
         integrated_route_modes = ["direct", "detour", "highway", "stagger"]
         integrated_wiring_svgs = {
-            route_mode: {"aggregate": "", "detailed": ""}
-            for route_mode in integrated_route_modes
+            route_mode: {"aggregate": "", "detailed": ""} for route_mode in integrated_route_modes
         }
         integrated_media_types = ["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
         integrated_racks: list[str] = []
