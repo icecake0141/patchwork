@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+# This file was created or modified with the assistance of an AI (Large Language Model).
+# Review required for correctness, security, and licensing.
+# Onboarding sample B: mixed media with 4 racks
+version: 1
+project:
+  name: onboarding-mixed-4rack
+  note: medium-size sample for first-time users
+racks:
+  - id: R01
+    name: Rack-01
+    max_u: 42
+  - id: R02
+    name: Rack-02
+    max_u: 42
+  - id: R03
+    name: Rack-03
+    max_u: 42
+  - id: R04
+    name: Rack-04
+    max_u: 42
+demands:
+  - id: D001
+    src: R01
+    dst: R02
+    endpoint_type: mmf_lc_duplex
+    count: 16
+  - id: D002
+    src: R01
+    dst: R03
+    endpoint_type: mpo12
+    count: 12
+  - id: D003
+    src: R02
+    dst: R04
+    endpoint_type: utp_rj45
+    count: 8
+  - id: D004
+    src: R03
+    dst: R04
+    endpoint_type: mmf_lc_duplex
+    count: 5
+  - id: D005
+    src: R01
+    dst: R02
+    endpoint_type: utp_rj45
+    count: 4
+settings:
+  fixed_profiles:
+    lc_demands:
+      trunk_polarity: A
+      breakout_module_variant: AF
+    mpo_e2e:
+      trunk_polarity: B
+      pass_through_variant: A
+  ordering:
+    slot_category_priority: [mpo_e2e, lc_mmf, lc_smf, utp]
+    peer_sort: natural_trailing_digits
+  panel:
+    slots_per_u: 4
+    allocation_direction: top_down
+    u_label_mode: ascending

@@ -12,6 +12,7 @@ Contents
 - `overview.md` — implementation overview and allocation behavior notes.
 - `index.md` — this file.
 - `quick-start.md` or `examples/quick-start/README.md` — quick start guide.
+- `onboarding/README.en.md` / `onboarding/README.ja.md` — first-time user input/output guide (2-rack and 4-rack scenarios).
 
 For wiring-decision details (for example, how `demands` are mapped to panel `u/slot/port`),
 see `api.md` section **Wiring Decision Logic (Demand -> Panel Placement)**.
@@ -27,6 +28,7 @@ Link to main README for setup and validation commands.
 - `overview.md` — 実装概要と割り当て挙動の補足。
 - `index.md` — このファイル。
 - `quick-start.md` または `examples/quick-start/README.md` — クイックスタートガイド。
+- `onboarding/README.en.md` / `onboarding/README.ja.md` — 初見ユーザ向けの入出力ガイド（2ラック・4ラックのシナリオ）。
 
 配線決定ロジック（例: `demands` を panel の `u/slot/port` にどう落とし込むか）は、
 `api.md` の **Wiring Decision Logic (Demand -> Panel Placement)** を参照してください。
