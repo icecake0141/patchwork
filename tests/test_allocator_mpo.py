@@ -38,9 +38,7 @@ def test_mpo_pass_through_forces_type_b_even_if_af_is_requested() -> None:
             "demands": [
                 {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 3}
             ],
-            "settings": {
-                "fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-AF"}}
-            },
+            "settings": {"fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-AF"}}},
         }
     )
     result = allocate(project)

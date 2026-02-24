@@ -596,7 +596,9 @@ def integrated_wiring_svg(
             and src_module_type == "mpo12_pass_through_12port"
             and dst_module_type == "mpo12_pass_through_12port"
         )
-        for session in grouped_sessions[(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)]:
+        for session in grouped_sessions[
+            (src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)
+        ]:
             src_port = int(session["src_port"])
             dst_port = src_port if use_mpo_pass_through_cable_view else int(session["dst_port"])
             display_slot_used_ports[(src_rack, src_u, src_slot)].add(src_port)

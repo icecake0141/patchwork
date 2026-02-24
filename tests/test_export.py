@@ -32,16 +32,12 @@ def test_bom_rows_include_mpo_pass_through_variant() -> None:
             "demands": [
                 {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
             ],
-            "settings": {
-                "fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-AF"}}
-            },
+            "settings": {"fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-AF"}}},
         }
     )
     result = allocate(project)
     rows = bom_rows(result)
-    module_descs = {
-        row["description"] for row in rows if row["item_type"] == "module"
-    }
+    module_descs = {row["description"] for row in rows if row["item_type"] == "module"}
     assert "mpo12_pass_through_12port Type-B" in module_descs
 
 
@@ -54,9 +50,7 @@ def test_rack_panel_svg_shows_mpo_pass_through_variant_label() -> None:
             "demands": [
                 {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
             ],
-            "settings": {
-                "fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-A"}}
-            },
+            "settings": {"fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-A"}}},
         }
     )
     result = allocate(project)
@@ -73,9 +67,7 @@ def test_bom_rows_include_lc_breakout_variant_pair() -> None:
             "demands": [
                 {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mmf_lc_duplex", "count": 1}
             ],
-            "settings": {
-                "fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}
-            },
+            "settings": {"fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}},
         }
     )
     result = allocate(project)
@@ -94,9 +86,7 @@ def test_rack_panel_svg_shows_lc_breakout_variant_label() -> None:
             "demands": [
                 {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "smf_lc_duplex", "count": 1}
             ],
-            "settings": {
-                "fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}
-            },
+            "settings": {"fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}},
         }
     )
     result = allocate(project)

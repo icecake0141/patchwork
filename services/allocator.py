@@ -225,13 +225,9 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
 
     fp = project.settings.fixed_profiles
     mpo_polarity = "B"
-    mpo_variant = _normalize_mpo_pass_through_variant(
-        fp.mpo_e2e.get("pass_through_variant", "B")
-    )
+    mpo_variant = _normalize_mpo_pass_through_variant(fp.mpo_e2e.get("pass_through_variant", "B"))
     lc_polarity = fp.lc_demands.get("trunk_polarity", "A")
-    lc_variant = _normalize_lc_breakout_variant(
-        fp.lc_demands.get("breakout_module_variant", "AF")
-    )
+    lc_variant = _normalize_lc_breakout_variant(fp.lc_demands.get("breakout_module_variant", "AF"))
 
     normalized_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
