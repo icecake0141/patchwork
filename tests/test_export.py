@@ -11,6 +11,7 @@ from services.allocator import allocate
 from services.export import (
     _integrated_gap_scale,
     _integrated_wire_gap_overlays,
+    bom_rows,
     integrated_wiring_drawio,
     integrated_wiring_interactive_svg,
     integrated_wiring_svg,
@@ -20,6 +21,89 @@ from services.export import (
     wiring_svg,
 )
 from services.render_svg import rack_slot_width, render_rack_panels_svg
+
+
+def test_bom_rows_include_mpo_pass_through_variant() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "bom-mpo-variant"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+            "settings": {
+                "fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-AF"}}
+            },
+        }
+    )
+    result = allocate(project)
+    rows = bom_rows(result)
+    module_descs = {
+        row["description"] for row in rows if row["item_type"] == "module"
+    }
+    assert "mpo12_pass_through_12port Type-B" in module_descs
+
+
+def test_rack_panel_svg_shows_mpo_pass_through_variant_label() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "svg-mpo-variant"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
+            ],
+            "settings": {
+                "fixed_profiles": {"mpo_e2e": {"pass_through_variant": "Type-A"}}
+            },
+        }
+    )
+    result = allocate(project)
+    svg = render_rack_panels_svg(result, "R1")
+    assert "MPO-12 pass-through (12-port) Type-B" in svg
+
+
+def test_bom_rows_include_lc_breakout_variant_pair() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "bom-lc-variant-pair"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mmf_lc_duplex", "count": 1}
+            ],
+            "settings": {
+                "fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}
+            },
+        }
+    )
+    result = allocate(project)
+    rows = bom_rows(result)
+    module_descs = {row["description"] for row in rows if row["item_type"] == "module"}
+    assert "lc_breakout_2xmpo12_to_12xlcduplex Type-AF" in module_descs
+    assert "lc_breakout_2xmpo12_to_12xlcduplex Type-A" in module_descs
+
+
+def test_rack_panel_svg_shows_lc_breakout_variant_label() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "svg-lc-variant"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "smf_lc_duplex", "count": 1}
+            ],
+            "settings": {
+                "fixed_profiles": {"lc_demands": {"breakout_module_variant": "AF"}}
+            },
+        }
+    )
+    result = allocate(project)
+    svg_r1 = render_rack_panels_svg(result, "R1")
+    svg_r2 = render_rack_panels_svg(result, "R2")
+    assert "2x MPO-12 to 12x LC duplex Break-out Type-AF" in svg_r1
+    assert "2x MPO-12 to 12x LC duplex Break-out Type-A" in svg_r2
 
 
 def test_wiring_svg_contains_expected_labels() -> None:
@@ -42,6 +126,8 @@ def test_wiring_svg_contains_expected_labels() -> None:
     assert "R2 U1S1" in svg
     assert "mpo12" in svg
     assert "Grouped by panel/slot pair" in svg
+    assert "P1→P1" in svg
+    assert "P2→P2" in svg
 
 
 def test_wiring_svg_sorts_ports_in_ascending_order() -> None:
@@ -105,6 +191,26 @@ def test_integrated_wiring_svg_detailed_port_sorting() -> None:
 
     assert i1 != -1 and i2 != -1 and i3 != -1
     assert i1 < i2 < i3
+
+
+def test_integrated_wiring_svg_mpo_pass_through_marks_destination_display_ports_occupied() -> None:
+    project = ProjectInput.model_validate(
+        {
+            "version": 1,
+            "project": {"name": "integrated-mpo-dst-occupancy"},
+            "racks": [{"id": "R1", "name": "R1"}, {"id": "R2", "name": "R2"}],
+            "demands": [
+                {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 8}
+            ],
+        }
+    )
+    result = allocate(project)
+    svg = integrated_wiring_svg(result, mode="detailed")
+
+    assert re.search(r'data-rack="R2"[^>]*data-port-state="occupied"[^>]*>P1</text>', svg)
+    assert not re.search(r'data-rack="R2"[^>]*data-port-state="free"[^>]*>P1</text>', svg)
+    assert re.search(r'data-rack="R2"[^>]*data-port-state="free"[^>]*>P12</text>', svg)
+    assert "occ 12/12" not in svg
 
 
 def test_integrated_wiring_svg_mode_changes_wire_count() -> None:

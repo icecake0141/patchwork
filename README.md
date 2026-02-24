@@ -227,6 +227,14 @@ Fixed profile behavior:
   `settings.fixed_profiles.mpo_e2e.trunk_polarity` are reflected to cable `polarity_type`.
 - `settings.fixed_profiles.lc_demands.breakout_module_variant` and
   `settings.fixed_profiles.mpo_e2e.pass_through_variant` are reflected to module `polarity_variant`.
+- MPO pass-through (`mpo12`) is treated as Method-B wiring:
+  - Pass-through module variant is `Type-B` (both rack sides).
+  - Trunk polarity is `B`.
+  - `P` (module port index) remains one-to-one (`P1↔P1`, `P2↔P2`, ...).
+  - `C` (internal core index) keeps Method-B reverse mapping (`C1↔C12`, `C2↔C11`, ...).
+- `Type-A` / `Type-AF` complementary usage is for LC breakout fronts (`mmf_lc_duplex` / `smf_lc_duplex`),
+  where front LC port pairing remains `P1↔P1`, `P2↔P2`, ... and core flip occurs inside each duplex pair.
+- Rack Occupancy labels and `bom.csv` include the resulting module variant labels.
 
 ### Output files
 

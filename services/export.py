@@ -101,6 +101,32 @@ MODULE_LAYOUT_MEDIA = {
 }
 
 
+def _normalize_mpo_pass_through_variant(variant: str | None) -> str:
+    if not variant:
+        return "B"
+    compact = "".join(ch for ch in str(variant).upper() if ch.isalnum())
+    if compact in {"TYPEA", "A"}:
+        return "A"
+    if compact in {"TYPEAF", "AF"}:
+        return "AF"
+    if compact in {"TYPEB", "B"}:
+        return "B"
+    return str(variant)
+
+
+def _module_bom_description(module: dict[str, Any]) -> str:
+    module_type = module.get("module_type", "")
+    if module_type not in {
+        "mpo12_pass_through_12port",
+        "lc_breakout_2xmpo12_to_12xlcduplex",
+    }:
+        return str(module_type)
+    variant = _normalize_mpo_pass_through_variant(module.get("polarity_variant"))
+    if variant in {"A", "AF", "B"}:
+        return f"{module_type} Type-{variant}"
+    return f"{module_type} {variant}"
+
+
 def _media_layout_profile(media: str) -> dict[str, Any]:
     return MEDIA_LAYOUT_PROFILES.get(
         media,
@@ -344,7 +370,7 @@ def bom_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
 
     module_counts: Counter[str] = Counter()
     for m in result.get("modules", []):
-        module_counts[m["module_type"]] += 1
+        module_counts[_module_bom_description(m)] += 1
     for desc, qty in sorted(module_counts.items()):
         rows.append({"item_type": "module", "description": desc, "quantity": qty})
 
@@ -377,6 +403,14 @@ def result_json(result: dict[str, Any]) -> str:
 
 def wiring_svg(result: dict[str, Any]) -> str:
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", 0) for c in result.get("cables", [])}
+    module_type_by_slot: dict[tuple[str, int, int], str] = {
+        (
+            str(module["rack_id"]),
+            int(module["panel_u"]),
+            int(module["slot"]),
+        ): str(module.get("module_type", "empty"))
+        for module in result.get("modules", [])
+    }
 
     groups: dict[tuple[str, int, int, str, int, int, str], list[dict[str, Any]]] = {}
     for session in result.get("sessions", []):
@@ -427,6 +461,13 @@ def wiring_svg(result: dict[str, Any]) -> str:
     for src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media in sorted_group_keys:
         sessions = groups[(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)]
         stroke = media_color.get(media, "#334155")
+        src_module_type = module_type_by_slot.get((src_rack, src_u, src_slot), "empty")
+        dst_module_type = module_type_by_slot.get((dst_rack, dst_u, dst_slot), "empty")
+        use_mpo_pass_through_cable_view = (
+            media == "mpo12"
+            and src_module_type == "mpo12_pass_through_12port"
+            and dst_module_type == "mpo12_pass_through_12port"
+        )
 
         src_group_label = escape(f"{src_rack} U{src_u}S{src_slot}")
         dst_group_label = escape(f"{dst_rack} U{dst_u}S{dst_slot}")
@@ -450,7 +491,7 @@ def wiring_svg(result: dict[str, Any]) -> str:
         for index, session in enumerate(sessions):
             line_y = y + 16 + index * row_h
             src_port = session["src_port"]
-            dst_port = session["dst_port"]
+            dst_port = src_port if use_mpo_pass_through_cable_view else session["dst_port"]
             cable_seq = cable_seq_map.get(session["cable_id"], "")
             cable_label = escape(f"#{cable_seq} {session['cable_id']}")
 
@@ -545,6 +586,21 @@ def integrated_wiring_svg(
         grouped_sessions[key].sort(
             key=lambda s: _media_port_sort_key(media, int(s["src_port"]), int(s["dst_port"]))
         )
+
+    display_slot_used_ports: dict[tuple[str, int, int], set[int]] = defaultdict(set)
+    for src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media in sorted_group_keys:
+        src_module_type = module_type_by_slot.get((src_rack, src_u, src_slot), "empty")
+        dst_module_type = module_type_by_slot.get((dst_rack, dst_u, dst_slot), "empty")
+        use_mpo_pass_through_cable_view = (
+            media == "mpo12"
+            and src_module_type == "mpo12_pass_through_12port"
+            and dst_module_type == "mpo12_pass_through_12port"
+        )
+        for session in grouped_sessions[(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)]:
+            src_port = int(session["src_port"])
+            dst_port = src_port if use_mpo_pass_through_cable_view else int(session["dst_port"])
+            display_slot_used_ports[(src_rack, src_u, src_slot)].add(src_port)
+            display_slot_used_ports[(dst_rack, dst_u, dst_slot)].add(dst_port)
 
     max_ports_per_slot = max(
         [
@@ -655,7 +711,7 @@ def integrated_wiring_svg(
             rear_x = x + rear_dx
             slot_side_positions[(rack_id, u_value, slot_value)] = (front_x, rear_x, rear_dx)
 
-            ports = sorted(slot_used_ports.get((rack_id, u_value, slot_value), set()))
+            ports = sorted(display_slot_used_ports.get((rack_id, u_value, slot_value), set()))
             ports_set = set(ports)
             shown_ports = len(ports)
             slot_capacity = module_capacity_by_slot.get((rack_id, u_value, slot_value), shown_ports)
@@ -888,12 +944,20 @@ def integrated_wiring_svg(
         if mode == "aggregate":
             src_ports = [int(s["src_port"]) for s in sessions]
             dst_ports = [int(s["dst_port"]) for s in sessions]
+            src_module_type = module_type_by_slot.get((src_rack, src_u, src_slot), "empty")
+            dst_module_type = module_type_by_slot.get((dst_rack, dst_u, dst_slot), "empty")
+            use_mpo_pass_through_cable_view = (
+                media == "mpo12"
+                and src_module_type == "mpo12_pass_through_12port"
+                and dst_module_type == "mpo12_pass_through_12port"
+            )
+            display_dst_ports = src_ports if use_mpo_pass_through_cable_view else dst_ports
             src_min = min(src_ports)
             src_max = max(src_ports)
-            dst_min = min(dst_ports)
-            dst_max = max(dst_ports)
-            src_anchor_port = sorted(src_ports)[len(src_ports) // 2]
-            dst_anchor_port = sorted(dst_ports)[len(dst_ports) // 2]
+            dst_min = min(display_dst_ports)
+            dst_max = max(display_dst_ports)
+            src_anchor_port = src_min
+            dst_anchor_port = src_anchor_port if use_mpo_pass_through_cable_view else dst_min
             cable_count = len({str(s["cable_id"]) for s in sessions})
             if src_min == src_max and dst_min == dst_max:
                 port_span_text = f"P{src_min}→P{dst_min}"
@@ -923,6 +987,11 @@ def integrated_wiring_svg(
                 media.endswith("lc_duplex")
                 and src_module_type == "lc_breakout_2xmpo12_to_12xlcduplex"
                 and dst_module_type == "lc_breakout_2xmpo12_to_12xlcduplex"
+            )
+            use_mpo_pass_through_cable_view = (
+                media == "mpo12"
+                and src_module_type == "mpo12_pass_through_12port"
+                and dst_module_type == "mpo12_pass_through_12port"
             )
 
             if use_mpo_trunk_rows:
@@ -972,6 +1041,20 @@ def integrated_wiring_svg(
                             }
                             for session in mpo_sessions
                         )
+            elif use_mpo_pass_through_cable_view:
+                rows = [
+                    {
+                        "wire_id": str(session["session_id"]),
+                        "media": media,
+                        "src_port": int(session["src_port"]),
+                        "dst_port": int(session["src_port"]),
+                        "port_text": f"P{session['src_port']}→P{session['src_port']}",
+                        "src_port_text": f"P{session['src_port']}",
+                        "dst_port_text": f"P{session['src_port']}",
+                        "label": f"P{session['src_port']}→P{session['src_port']} #{cable_seq_map.get(session['cable_id'], '')}",
+                    }
+                    for session in sessions
+                ]
             else:
                 rows = [
                     {
@@ -1018,12 +1101,11 @@ def integrated_wiring_svg(
                 dst_rear_dx = 32 if rack_side[dst_rack] == "left" else -32
                 dst_rear_x = x2 + dst_rear_dx
 
-            src_anchor = slot_anchor_positions.get(
-                (src_rack, src_u, src_slot, int(row["src_port"]))
-            )
-            dst_anchor = slot_anchor_positions.get(
-                (dst_rack, dst_u, dst_slot, int(row["dst_port"]))
-            )
+            src_anchor_port = int(row["src_port"])
+            dst_anchor_port = int(row["dst_port"])
+
+            src_anchor = slot_anchor_positions.get((src_rack, src_u, src_slot, src_anchor_port))
+            dst_anchor = slot_anchor_positions.get((dst_rack, dst_u, dst_slot, dst_anchor_port))
             if src_anchor is not None:
                 src_rear_x, y1 = src_anchor
             if dst_anchor is not None:

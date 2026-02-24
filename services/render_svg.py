@@ -24,6 +24,35 @@ MODULE_COLORS = {
 }
 
 
+def _normalize_mpo_pass_through_variant(variant: str | None) -> str:
+    if not variant:
+        return "B"
+    compact = "".join(ch for ch in str(variant).upper() if ch.isalnum())
+    if compact in {"TYPEA", "A"}:
+        return "A"
+    if compact in {"TYPEAF", "AF"}:
+        return "AF"
+    if compact in {"TYPEB", "B"}:
+        return "B"
+    return str(variant)
+
+
+def _module_display_label(module: dict[str, Any] | None) -> str:
+    if not module:
+        return MODULE_LABELS["empty"] if "empty" in MODULE_LABELS else "empty"
+    module_type = module["module_type"]
+    label = MODULE_LABELS.get(module_type, module_type)
+    if module_type not in {
+        "mpo12_pass_through_12port",
+        "lc_breakout_2xmpo12_to_12xlcduplex",
+    }:
+        return label
+    variant = _normalize_mpo_pass_through_variant(module.get("polarity_variant"))
+    if variant in {"A", "AF", "B"}:
+        return f"{label} Type-{variant}"
+    return f"{label} {variant}"
+
+
 def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
     panels = [p for p in result["panels"] if rack_id is None or p["rack_id"] == rack_id]
     modules = [m for m in result["modules"] if rack_id is None or m["rack_id"] == rack_id]
@@ -34,11 +63,10 @@ def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
         panel_rack = panel["rack_id"]
         for slot in range(1, panel["slots_per_u"] + 1):
             mod = by_rack_uslot.get((panel_rack, panel["u"], slot))
-            module_type = mod["module_type"] if mod else "empty"
-            label = MODULE_LABELS.get(module_type, module_type)
+            label = _module_display_label(mod)
             max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
 
-    return max(180, max_label_chars * 6 + 12)
+    return max(200, int(max_label_chars * 7 + 18))
 
 
 def render_topology_svg(result: dict[str, Any]) -> str:
@@ -86,7 +114,7 @@ def render_rack_panels_svg(
             x = 80 + (slot - 1) * (effective_slot_width + slot_gap)
             mod = by_uslot.get((panel["u"], slot))
             module_type = mod["module_type"] if mod else "empty"
-            label = MODULE_LABELS.get(module_type, module_type)
+            label = _module_display_label(mod)
             fill_color = MODULE_COLORS.get(module_type, "#eef")
             lines.append(
                 f'<rect x="{x}" y="{y - 12}" width="{effective_slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
@@ -97,7 +125,7 @@ def render_rack_panels_svg(
             )
         y += 28
     height = y + 20
-    width = 80 + max_slots_per_u * (effective_slot_width + slot_gap) + 20
+    width = 80 + max_slots_per_u * (effective_slot_width + slot_gap) + 40
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">{"".join(lines)}</svg>'
 
 

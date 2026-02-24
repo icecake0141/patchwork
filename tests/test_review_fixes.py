@@ -384,8 +384,8 @@ def test_pair_detail_survives_json_round_trip_lc() -> None:
 
 
 def test_fixed_profiles_mpo_polarity_applied() -> None:
-    """trunk_polarity from settings.fixed_profiles.mpo_e2e must be used for
-    MPO12 trunk cables instead of a hardcoded 'B'."""
+    """MPO12 pass-through enforces Method-B (Type-B module/cable) semantics.
+    User-provided MPO pass_through_variant/trunk_polarity must not override this."""
     payload = _base_two_racks()
     payload["demands"] = [
         {"id": "D1", "src": "R1", "dst": "R2", "endpoint_type": "mpo12", "count": 1}
@@ -395,9 +395,9 @@ def test_fixed_profiles_mpo_polarity_applied() -> None:
     }
     result = allocate(ProjectInput.model_validate(payload))
     cable = result["cables"][0]
-    assert cable["polarity_type"] == "A", "trunk_polarity from settings must be used"
+    assert cable["polarity_type"] == "B", "MPO pass-through cable polarity must be Type-B"
     r1_mod = next(m for m in result["modules"] if m["rack_id"] == "R1")
-    assert r1_mod["polarity_variant"] == "B", "pass_through_variant from settings must be used"
+    assert r1_mod["polarity_variant"] == "B", "MPO pass-through module variant must be Type-B"
 
 
 def test_fixed_profiles_lc_polarity_applied() -> None:

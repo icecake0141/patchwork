@@ -52,7 +52,7 @@ class FixedProfiles(BaseModel):
         default_factory=lambda: {"trunk_polarity": "A", "breakout_module_variant": "AF"}
     )
     mpo_e2e: dict[str, str] = Field(
-        default_factory=lambda: {"trunk_polarity": "B", "pass_through_variant": "A"}
+        default_factory=lambda: {"trunk_polarity": "B", "pass_through_variant": "B"}
     )
 
 

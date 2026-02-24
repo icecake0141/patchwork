@@ -138,17 +138,20 @@ This document describes the interfaces and allocation behavior implemented in th
 - Required slots per rack pair: `ceil(count / 12)`.
 - For each slot chunk:
   - Reserve one slot on each rack.
-  - Place `mpo12_pass_through_12port` module on both sides (`dedicated=1`).
-  - Create up to 12 one-to-one sessions (`src_port == dst_port`).
-  - Create one cable per used port with MPO polarity profile.
+  - Place `mpo12_pass_through_12port` module on both sides (`dedicated=1`) as `Type-B`.
+  - Session port mapping uses one-to-one module ports (`P1↔P1`, `P2↔P2`, ...).
+  - Internal core mapping preserves Method-B reverse (`C1↔C12`, `C2↔C11`, ...).
+  - Create one cable per used port with Type-B trunk polarity.
 
 #### LC breakout (`lc_mmf` / `lc_smf`)
 - Required slots per rack pair: `ceil(count / 12)`.
 - For each slot chunk:
   - Reserve one slot on each rack.
   - Place `lc_breakout_2xmpo12_to_12xlcduplex` module on both sides (`dedicated=1`).
+    - For `A`/`AF` family variants, rack sides are complementary (`Type-A` and `Type-AF`).
   - Create two MPO trunk cables per chunk (MPO port 1 and 2).
   - Map LC ports `1..6` to MPO-1 and `7..12` to MPO-2.
+  - Front LC port pairing remains one-to-one (`P1↔P1`, `P2↔P2`, ...); polarity flip is inside duplex core pairs.
   - Fiber-pair mapping per MPO local port:
     - 1->(1,2), 2->(3,4), 3->(5,6), 4->(7,8), 5->(9,10), 6->(11,12)
 

@@ -53,6 +53,50 @@ LC_FIBER_MAP = {
 }
 
 
+def _normalize_mpo_pass_through_variant(variant: str | None) -> str:
+    if not variant:
+        return "B"
+    compact = "".join(ch for ch in str(variant).upper() if ch.isalnum())
+    if compact in {"TYPEB", "B"}:
+        return "B"
+    return "B"
+
+
+def _complement_mpo_pass_through_variant(variant: str) -> str:
+    normalized = _normalize_mpo_pass_through_variant(variant)
+    return normalized
+
+
+def _normalize_lc_breakout_variant(variant: str | None) -> str:
+    if not variant:
+        return "AF"
+    compact = "".join(ch for ch in str(variant).upper() if ch.isalnum())
+    if compact in {"TYPEA", "A"}:
+        return "A"
+    if compact in {"TYPEAF", "AF"}:
+        return "AF"
+    return str(variant)
+
+
+def _complement_lc_breakout_variant(variant: str) -> str:
+    normalized = _normalize_lc_breakout_variant(variant)
+    if normalized == "A":
+        return "AF"
+    if normalized == "AF":
+        return "A"
+    return normalized
+
+
+def _map_mpo_pass_through_dst_core(
+    src_core: int,
+    src_variant: str,
+    dst_variant: str,
+) -> int:
+    _ = _normalize_mpo_pass_through_variant(src_variant)
+    _ = _normalize_mpo_pass_through_variant(dst_variant)
+    return 13 - src_core
+
+
 @dataclass
 class SlotRef:
     rack_id: str
@@ -129,8 +173,14 @@ def _session(
     dst: SlotRef,
     dst_port: int,
     fiber_pair: tuple[int, int] | None = None,
+    src_core: int | None = None,
+    dst_core: int | None = None,
 ) -> dict[str, Any]:
-    canonical = f"{media}|{src.rack_id}|{src.u}|{src.slot}|{src_port}|{dst.rack_id}|{dst.u}|{dst.slot}|{dst_port}|{cable_id}|{fiber_pair or ''}"
+    canonical = (
+        f"{media}|{src.rack_id}|{src.u}|{src.slot}|{src_port}|"
+        f"{dst.rack_id}|{dst.u}|{dst.slot}|{dst_port}|{cable_id}|{fiber_pair or ''}|"
+        f"{src_core if src_core is not None else ''}|{dst_core if dst_core is not None else ''}"
+    )
     session_id = deterministic_id("ses", canonical)
     return {
         "session_id": session_id,
@@ -149,6 +199,8 @@ def _session(
         "dst_u": dst.u,
         "dst_slot": dst.slot,
         "dst_port": dst_port,
+        "src_core": src_core,
+        "dst_core": dst_core,
         "fiber_a": fiber_pair[0] if fiber_pair else None,
         "fiber_b": fiber_pair[1] if fiber_pair else None,
         "notes": "",
@@ -172,10 +224,14 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     pair_details: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     fp = project.settings.fixed_profiles
-    mpo_polarity = fp.mpo_e2e.get("trunk_polarity", "B")
-    mpo_variant = fp.mpo_e2e.get("pass_through_variant", "A")
+    mpo_polarity = "B"
+    mpo_variant = _normalize_mpo_pass_through_variant(
+        fp.mpo_e2e.get("pass_through_variant", "B")
+    )
     lc_polarity = fp.lc_demands.get("trunk_polarity", "A")
-    lc_variant = fp.lc_demands.get("breakout_module_variant", "AF")
+    lc_variant = _normalize_lc_breakout_variant(
+        fp.lc_demands.get("breakout_module_variant", "AF")
+    )
 
     normalized_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
@@ -264,6 +320,8 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         break
                     if endpoint == "mpo12":
                         module_type = "mpo12_pass_through_12port"
+                        variant_a = mpo_variant
+                        variant_b = _complement_mpo_pass_through_variant(mpo_variant)
                         modules.extend(
                             [
                                 {
@@ -275,7 +333,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     "slot": slot_a.slot,
                                     "module_type": module_type,
                                     "fiber_kind": None,
-                                    "polarity_variant": mpo_variant,
+                                    "polarity_variant": variant_a,
                                     "peer_rack_id": b,
                                     "dedicated": 1,
                                 },
@@ -288,7 +346,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     "slot": slot_b.slot,
                                     "module_type": module_type,
                                     "fiber_kind": None,
-                                    "polarity_variant": mpo_variant,
+                                    "polarity_variant": variant_b,
                                     "peer_rack_id": a,
                                     "dedicated": 1,
                                 },
@@ -312,8 +370,16 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                             }
                         )
                         for port in range(1, used + 1):
+                            src_port = port
+                            dst_port = src_port
+                            src_core = src_port
+                            dst_core = _map_mpo_pass_through_dst_core(
+                                src_core,
+                                src_variant=variant_a,
+                                dst_variant=variant_b,
+                            )
                             cable = _build_cable(
-                                "mpo12", slot_a, port, slot_b, port, polarity=mpo_polarity
+                                "mpo12", slot_a, src_port, slot_b, dst_port, polarity=mpo_polarity
                             )
                             cables.setdefault(cable["cable_id"], cable)
                             sessions.append(
@@ -322,14 +388,18 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     cable["cable_id"],
                                     module_type,
                                     slot_a,
-                                    port,
+                                    src_port,
                                     slot_b,
-                                    port,
+                                    dst_port,
+                                    src_core=src_core,
+                                    dst_core=dst_core,
                                 )
                             )
                     else:
                         # LC breakout (mmf or smf)
                         module_type = "lc_breakout_2xmpo12_to_12xlcduplex"
+                        variant_a = lc_variant
+                        variant_b = _complement_lc_breakout_variant(lc_variant)
                         modules.extend(
                             [
                                 {
@@ -342,7 +412,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     "slot": slot_a.slot,
                                     "module_type": module_type,
                                     "fiber_kind": fiber_kind,
-                                    "polarity_variant": lc_variant,
+                                    "polarity_variant": variant_a,
                                     "peer_rack_id": b,
                                     "dedicated": 1,
                                 },
@@ -356,7 +426,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     "slot": slot_b.slot,
                                     "module_type": module_type,
                                     "fiber_kind": fiber_kind,
-                                    "polarity_variant": lc_variant,
+                                    "polarity_variant": variant_b,
                                     "peer_rack_id": a,
                                     "dedicated": 1,
                                 },

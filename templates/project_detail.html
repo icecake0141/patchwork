@@ -102,7 +102,7 @@
 	<h2>Rack Occupancy</h2>
 	{% for rack,svg in rack_svgs.items() %}
 	<h3>{{ rack }}</h3>
-	<div>{{ svg|safe }}</div>
+	<div class="rack-scroll">{{ svg|safe }}</div>
 	{% endfor %}
 </div>
 
