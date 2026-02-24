@@ -479,11 +479,11 @@ def wiring_svg(result: dict[str, Any]) -> str:
         groups[key].sort(key=lambda session: (session["src_port"], session["dst_port"]))
 
     col_src_x = 24
-    col_map_x = 430
-    col_dst_x = 1010
-    col_cable_x = 1120
-    line_x1 = 360
-    line_x2 = col_dst_x - 30
+    col_map_x = 360
+    col_dst_x = 860
+    col_cable_x = 950
+    line_x1 = 280
+    line_x2 = col_dst_x - 70
 
     max_cable_label_chars = 0
     for sessions in groups.values():
@@ -493,7 +493,7 @@ def wiring_svg(result: dict[str, Any]) -> str:
             max_cable_label_chars = max(max_cable_label_chars, len(cable_label))
 
     cable_col_w = max(170, int(max_cable_label_chars * 6.2 + 24))
-    width = max(1360, col_cable_x + cable_col_w + 20)
+    width = max(1180, col_cable_x + cable_col_w + 16)
     top = 110
     group_header_h = 28
     row_h = 18
