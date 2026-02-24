@@ -100,6 +100,13 @@ MODULE_LAYOUT_MEDIA = {
     "lc_breakout_2xmpo12_to_12xlcduplex": "mmf_lc_duplex",
 }
 
+MODULE_DISPLAY_LABELS = {
+    "mpo12_pass_through_12port": "MPO PT",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "LC BO",
+    "utp_6xrj45": "UTP",
+    "empty": "empty",
+}
+
 
 def _normalize_mpo_pass_through_variant(variant: str | None) -> str:
     if not variant:
@@ -125,6 +132,19 @@ def _module_bom_description(module: dict[str, Any]) -> str:
     if variant in {"A", "AF", "B"}:
         return f"{module_type} Type-{variant}"
     return f"{module_type} {variant}"
+
+
+def _module_display_label(module_type: str, polarity_variant: str | None = None) -> str:
+    label = MODULE_DISPLAY_LABELS.get(module_type, module_type)
+    if module_type not in {
+        "mpo12_pass_through_12port",
+        "lc_breakout_2xmpo12_to_12xlcduplex",
+    }:
+        return label
+    variant = _normalize_mpo_pass_through_variant(polarity_variant)
+    if variant in {"A", "AF", "B"}:
+        return f"{label} Type-{variant}"
+    return f"{label} {variant}"
 
 
 def _media_layout_profile(media: str) -> dict[str, Any]:
@@ -576,6 +596,14 @@ def integrated_wiring_svg(
         )
         for module in result.get("modules", [])
     }
+    module_variant_by_slot: dict[tuple[str, int, int], str | None] = {
+        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): (
+            str(module.get("polarity_variant"))
+            if module.get("polarity_variant") is not None
+            else None
+        )
+        for module in result.get("modules", [])
+    }
     module_layout_by_slot: dict[tuple[str, int, int], dict[str, Any]] = {
         (
             str(module["rack_id"]),
@@ -761,6 +789,8 @@ def integrated_wiring_svg(
                 _media_layout_profile(""),
             )
             slot_module_type = module_type_by_slot.get((rack_id, u_value, slot_value), "empty")
+            slot_module_variant = module_variant_by_slot.get((rack_id, u_value, slot_value))
+            slot_module_label = _module_display_label(slot_module_type, slot_module_variant)
             slot_port_order = str(slot_layout_profile.get("port_order", "asc"))
             slot_layout_label = str(slot_layout_profile.get("label", "Generic"))
             effective_ports_set = set(ports_set)
@@ -830,7 +860,7 @@ def integrated_wiring_svg(
                 f'<text x="{x + 8}" y="{box_y - 5}" font-size="9" font-family="Arial, sans-serif" fill="#475569" class="integrated-rack-element" data-rack="{escape(rack_id)}" data-slot-state="{slot_state}">{occupancy_text}</text>'
             )
             node_lines.append(
-                f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
+                f'<text x="{x + 68}" y="{box_y - 5}" font-size="8" font-family="Arial, sans-serif" fill="#64748b" class="integrated-rack-element" data-rack="{escape(rack_id)}">{escape(slot_module_label)} • {escape(slot_layout_label)} / {escape(slot_port_order)}</text>'
             )
             front_label_x = front_x - 26 if rear_dx > 0 else front_x + 6
             rear_label_x = rear_x + 6 if rear_dx > 0 else rear_x - 28

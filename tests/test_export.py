@@ -159,6 +159,7 @@ def test_integrated_wiring_svg_contains_title_and_grouping_text() -> None:
     assert svg.startswith("<svg")
     assert "Integrated Wiring View" in svg
     assert "Grouped by panel/slot pair" in svg
+    assert "MPO PT Type-B" in svg
 
 
 def test_integrated_wiring_svg_detailed_port_sorting() -> None:
