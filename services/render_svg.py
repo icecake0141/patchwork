@@ -24,6 +24,26 @@ MODULE_COLORS = {
 }
 
 
+def _split_slot_label(slot: int, label: str) -> tuple[str, str | None]:
+    prefix = f"S{slot}: "
+    if " Type-" in label:
+        base, variant = label.split(" Type-", 1)
+        return f"{prefix}{base}", f"Type-{variant}"
+
+    first_line_limit = 28
+    if len(prefix) + len(label) <= first_line_limit:
+        return f"{prefix}{label}", None
+
+    split_at = label.rfind(" ", 0, max(1, first_line_limit - len(prefix)))
+    if split_at <= 0:
+        split_at = label.find(" ")
+    if split_at <= 0:
+        return f"{prefix}{label}", None
+    first = label[:split_at].rstrip()
+    second = label[split_at + 1 :].lstrip()
+    return f"{prefix}{first}", second or None
+
+
 def _normalize_mpo_pass_through_variant(variant: str | None) -> str:
     if not variant:
         return "B"
@@ -76,9 +96,10 @@ def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
         for slot in range(1, panel["slots_per_u"] + 1):
             mod = by_rack_uslot.get((panel_rack, panel["u"], slot))
             label = _module_display_label(mod)
-            max_label_chars = max(max_label_chars, len(f"S{slot}: {label}"))
+            line1, line2 = _split_slot_label(slot, label)
+            max_label_chars = max(max_label_chars, len(line1), len(line2 or ""))
 
-    return max(200, int(max_label_chars * 7 + 18))
+    return max(90, int(max_label_chars * 5 + 10))
 
 
 def render_topology_svg(result: dict[str, Any]) -> str:
@@ -129,13 +150,16 @@ def render_rack_panels_svg(
             label = _module_display_label(mod)
             fill_color = _module_fill_color(mod)
             lines.append(
-                f'<rect x="{x}" y="{y - 12}" width="{effective_slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
+                f'<rect x="{x}" y="{y - 14}" width="{effective_slot_width}" height="28" fill="{fill_color}" stroke="#225"><title>S{slot}: {label}</title></rect>'
             )
             text_color = "#fff" if module_type == "empty" else "#000"
-            lines.append(
-                f'<text x="{x + 4}" y="{y}" font-size="10" fill="{text_color}">S{slot}: {label}</text>'
-            )
-        y += 28
+            line1, line2 = _split_slot_label(slot, label)
+            lines.append(f'<text x="{x + 4}" y="{y - 2}" font-size="9" fill="{text_color}">{line1}</text>')
+            if line2:
+                lines.append(
+                    f'<text x="{x + 4}" y="{y + 8}" font-size="9" fill="{text_color}">{line2}</text>'
+                )
+        y += 34
     height = y + 20
     width = 80 + max_slots_per_u * (effective_slot_width + slot_gap) + 40
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">{"".join(lines)}</svg>'
