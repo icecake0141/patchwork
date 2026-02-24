@@ -1662,7 +1662,7 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
     media_controls_object = (
         f'<foreignObject x="16" y="8" width="{controls_w:.0f}" height="28">'
         '<div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 11px; color: #111827; display: flex; gap: 10px; align-items: center; background: #ffffff; border: 1px solid #d1d5db; border-radius: 6px; padding: 3px 8px; overflow-x: auto; overflow-y: hidden; white-space: nowrap;">'
-        '<span style="font-weight: 700;">Media Filter</span>'
+        '<span style="font-weight:700;color:#ffffff;background:#7c3aed;border-radius:4px;padding:1px 6px;">Media Filter</span>'
         f"{media_controls}"
         "</div>"
         "</foreignObject>"
