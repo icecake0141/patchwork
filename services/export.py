@@ -478,7 +478,22 @@ def wiring_svg(result: dict[str, Any]) -> str:
     for key in sorted_group_keys:
         groups[key].sort(key=lambda session: (session["src_port"], session["dst_port"]))
 
-    width = 1360
+    col_src_x = 24
+    col_map_x = 430
+    col_dst_x = 1010
+    col_cable_x = 1120
+    line_x1 = 360
+    line_x2 = col_dst_x - 30
+
+    max_cable_label_chars = 0
+    for sessions in groups.values():
+        for session in sessions:
+            cable_seq = cable_seq_map.get(session["cable_id"], "")
+            cable_label = f"#{cable_seq} {session['cable_id']}"
+            max_cable_label_chars = max(max_cable_label_chars, len(cable_label))
+
+    cable_col_w = max(170, int(max_cable_label_chars * 6.2 + 24))
+    width = max(1360, col_cable_x + cable_col_w + 20)
     top = 110
     group_header_h = 28
     row_h = 18
@@ -494,9 +509,9 @@ def wiring_svg(result: dict[str, Any]) -> str:
         '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Cable Wiring Diagram</text>',
         '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair, sorted by source port number.</text>',
         '<text x="20" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Src panel/slot</text>',
-        '<text x="430" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
-        '<text x="1010" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
-        '<text x="1120" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable ID</text>',
+        f'<text x="{col_map_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
+        f'<text x="{col_dst_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
+        f'<text x="{col_cable_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable ID</text>',
     ]
 
     y = top
@@ -523,16 +538,16 @@ def wiring_svg(result: dict[str, Any]) -> str:
         )
 
         lines.append(
-            f'<rect x="18" y="{y - 16}" width="1324" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
+            f'<rect x="18" y="{y - 16}" width="{width - 36}" height="{group_header_h + len(sessions) * row_h}" fill="#f8fafc" stroke="#e2e8f0"/>'
         )
         lines.append(
-            f'<text x="24" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{src_group_label}</text>'
+            f'<text x="{col_src_x}" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{src_group_label}</text>'
         )
         lines.append(
-            f'<text x="430" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{group_title}</text>'
+            f'<text x="{col_map_x}" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{group_title}</text>'
         )
         lines.append(
-            f'<text x="1010" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{dst_group_label}</text>'
+            f'<text x="{col_dst_x}" y="{y}" font-size="12" font-family="Arial, sans-serif" font-weight="bold" fill="#111827">{dst_group_label}</text>'
         )
 
         for index, session in enumerate(sessions):
@@ -541,21 +556,26 @@ def wiring_svg(result: dict[str, Any]) -> str:
             dst_port = src_port if use_mpo_pass_through_cable_view else session["dst_port"]
             cable_seq = cable_seq_map.get(session["cable_id"], "")
             cable_label = escape(f"#{cable_seq} {session['cable_id']}")
+            mapping_label = escape(f"P{src_port}→P{dst_port}")
+            mapping_label_w = max(48.0, len(f"P{src_port}→P{dst_port}") * 6.4)
 
             lines.append(
-                f'<line x1="360" y1="{line_y - 4}" x2="980" y2="{line_y - 4}" stroke="{stroke}" stroke-width="1.6"/>'
+                f'<line x1="{line_x1}" y1="{line_y - 4}" x2="{line_x2}" y2="{line_y - 4}" stroke="{stroke}" stroke-width="1.6"/>'
             )
             lines.append(
-                f'<text x="24" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}</text>'
+                f'<rect x="{col_map_x - 2}" y="{line_y - 12}" width="{mapping_label_w + 6:.1f}" height="13" fill="#f8fafc" opacity="0.96"/>'
             )
             lines.append(
-                f'<text x="430" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}→P{dst_port}</text>'
+                f'<text x="{col_src_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{src_port}</text>'
             )
             lines.append(
-                f'<text x="1010" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
+                f'<text x="{col_map_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{mapping_label}</text>'
             )
             lines.append(
-                f'<text x="1120" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
+                f'<text x="{col_dst_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
+            )
+            lines.append(
+                f'<text x="{col_cable_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
             )
 
         y += group_header_h + len(sessions) * row_h + group_gap
