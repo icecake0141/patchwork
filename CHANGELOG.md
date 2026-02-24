@@ -15,6 +15,7 @@ Review required for correctness, security, and licensing.
 # Changelog
 
 ## Unreleased
+- Added per-demand `aggregatable` flag in `project.yaml` to allow MPO/LC slot sharing across peers when enabled; default remains peer-dedicated allocation.
 - Added GitHub Actions CI workflow to run linting, formatting checks, type checks, tests, and pre-commit hooks.
 - Added editable Draw.io exports for wiring, integrated wiring (Aggregate/Detailed pages), and rack occupancy (single-sheet).
 - Added Draw.io edge line-jump styling (`jumpStyle=arc`, `jumpSize=6`) to improve crossing readability.

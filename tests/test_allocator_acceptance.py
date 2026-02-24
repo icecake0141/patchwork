@@ -153,3 +153,59 @@ def test_mixed_in_u_behavior_acceptance() -> None:
         m["panel_u"] == 1 and m["slot"] == 4 and m["module_type"].startswith("lc_breakout")
         for m in r02
     )
+
+
+def test_lc_demands_are_dedicated_by_default() -> None:
+    payload = _base()
+    payload["demands"] = [
+        {"id": "D1", "src": "R01", "dst": "R02", "endpoint_type": "mmf_lc_duplex", "count": 1},
+        {"id": "D2", "src": "R01", "dst": "R03", "endpoint_type": "mmf_lc_duplex", "count": 1},
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+    r01_lc = [
+        m
+        for m in result["modules"]
+        if m["rack_id"] == "R01" and m["module_type"] == "lc_breakout_2xmpo12_to_12xlcduplex"
+    ]
+    assert len(r01_lc) == 2
+    assert {m["peer_rack_id"] for m in r01_lc} == {"R02", "R03"}
+    assert all(m["dedicated"] == 1 for m in r01_lc)
+
+
+def test_lc_demands_can_share_slots_when_aggregatable() -> None:
+    payload = _base()
+    payload["demands"] = [
+        {
+            "id": "D1",
+            "src": "R01",
+            "dst": "R02",
+            "endpoint_type": "mmf_lc_duplex",
+            "count": 1,
+            "aggregatable": True,
+        },
+        {
+            "id": "D2",
+            "src": "R01",
+            "dst": "R03",
+            "endpoint_type": "mmf_lc_duplex",
+            "count": 1,
+            "aggregatable": True,
+        },
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+    r01_lc = [
+        m
+        for m in result["modules"]
+        if m["rack_id"] == "R01" and m["module_type"] == "lc_breakout_2xmpo12_to_12xlcduplex"
+    ]
+    assert len(r01_lc) == 1
+    assert r01_lc[0]["peer_rack_id"] is None
+    assert r01_lc[0]["dedicated"] == 0
+
+    r01_sessions = [
+        s
+        for s in result["sessions"]
+        if s["media"] == "mmf_lc_duplex" and s["src_rack"] == "R01"
+    ]
+    assert len(r01_sessions) == 2
+    assert {s["src_slot"] for s in r01_sessions} == {r01_lc[0]["slot"]}

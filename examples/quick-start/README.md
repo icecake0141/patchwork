@@ -74,6 +74,7 @@ A `project.yaml` file describes racks, demands, and optional settings.
 | `dst`           | string  | Yes      | Destination rack `id`. |
 | `endpoint_type` | string  | Yes      | Connection type. One of: `mmf_lc_duplex`, `smf_lc_duplex`, `mpo12`, `utp_rj45`. |
 | `count`         | integer | Yes      | Number of connections required (> 0). |
+| `aggregatable`  | boolean | No       | If `true`, this demand may share same-type slots across peers (default: `false`). |
 
 ### `settings` (optional, all fields have defaults)
 
@@ -278,6 +279,7 @@ Sample `result.json` metrics section:
 | `dst`           | string  | Yes  | 送信先ラックの `id`。 |
 | `endpoint_type` | string  | Yes  | 接続種別。`mmf_lc_duplex` / `smf_lc_duplex` / `mpo12` / `utp_rj45`。 |
 | `count`         | integer | Yes  | 必要接続数（`> 0`）。 |
+| `aggregatable`  | boolean | No   | `true` の場合、この需要は同一種別スロットへの集約を許可（既定値: `false`）。 |
 
 ### `settings`（任意。全項目デフォルトあり）
 

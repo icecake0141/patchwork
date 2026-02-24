@@ -232,14 +232,33 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     normalized_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )
+    dedicated_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    aggregatable_demands: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for d in project.demands:
         pk = pair_key(d.src, d.dst)
         normalized_demands[pk][d.endpoint_type] += d.count
+        if d.aggregatable and d.endpoint_type in {"mpo12", "mmf_lc_duplex", "smf_lc_duplex"}:
+            aggregatable_demands[d.endpoint_type].append(
+                {
+                    "demand_id": d.id,
+                    "rack_a": pk[0],
+                    "rack_b": pk[1],
+                    "count": d.count,
+                }
+            )
+        else:
+            dedicated_demands[pk][d.endpoint_type] += d.count
 
     peer_sort_strategy = project.settings.ordering.peer_sort
     pair_sort_key = str if peer_sort_strategy == "lexicographic" else natural_sort_key
     sorted_pairs = sorted(
         normalized_demands.keys(),
+        key=lambda p: (pair_sort_key(p[0]), pair_sort_key(p[1])),
+    )
+    dedicated_pairs = sorted(
+        dedicated_demands.keys(),
         key=lambda p: (pair_sort_key(p[0]), pair_sort_key(p[1])),
     )
 
@@ -257,6 +276,48 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     utp_ports: dict[str, dict[str, list[tuple[SlotRef, int]]]] = defaultdict(
         lambda: defaultdict(list)
     )
+    aggregatable_slot_pools: dict[tuple[str, str, str, int], list[dict[str, Any]]] = defaultdict(
+        list
+    )
+    aggregatable_pair_usage: dict[tuple[str, str, str, int, int, int, int], int] = defaultdict(int)
+
+    def reserve_aggregatable_port(
+        rack_id: str,
+        endpoint: str,
+        fiber_kind: str | None,
+        side: int,
+        module_type: str,
+        polarity_variant: str,
+    ) -> tuple[SlotRef, int] | None:
+        pool_key = (rack_id, endpoint, fiber_kind or "", side)
+        slot_states = aggregatable_slot_pools[pool_key]
+        for state in slot_states:
+            if state["used_ports"] < 12:
+                state["used_ports"] += 1
+                return state["slot"], state["used_ports"]
+        try:
+            slot = rack_allocators[rack_id].reserve_slot()
+        except RackOverflowError as exc:
+            errors.append(str(exc))
+            return None
+        modules.append(
+            {
+                "module_id": deterministic_id(
+                    "mod",
+                    f"{rack_id}|{slot.u}|{slot.slot}|{endpoint}|agg|{side}",
+                ),
+                "rack_id": rack_id,
+                "panel_u": slot.u,
+                "slot": slot.slot,
+                "module_type": module_type,
+                "fiber_kind": fiber_kind,
+                "polarity_variant": polarity_variant,
+                "peer_rack_id": None,
+                "dedicated": 0,
+            }
+        )
+        slot_states.append({"slot": slot, "used_ports": 1})
+        return slot, 1
 
     for category in priority:
         if category == "utp":
@@ -302,8 +363,8 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
             continue
 
         for endpoint, fiber_kind in _CATEGORY_ENDPOINTS[category]:
-            for a, b in sorted_pairs:
-                count = normalized_demands[(a, b)].get(endpoint, 0)
+            for a, b in dedicated_pairs:
+                count = dedicated_demands[(a, b)].get(endpoint, 0)
                 if not count:
                     continue
                 slots_needed = ceil(count / 12)
@@ -474,6 +535,127 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                                     fiber_pair=fibers,
                                 )
                             )
+
+            aggregatable_by_endpoint = sorted(
+                aggregatable_demands.get(endpoint, []),
+                key=lambda row: (
+                    pair_sort_key(row["rack_a"]),
+                    pair_sort_key(row["rack_b"]),
+                    str(row["demand_id"]),
+                ),
+            )
+            for row in aggregatable_by_endpoint:
+                a = row["rack_a"]
+                b = row["rack_b"]
+                count = int(row["count"])
+                if endpoint == "mpo12":
+                    module_type = "mpo12_pass_through_12port"
+                    variant_a = mpo_variant
+                    variant_b = _complement_mpo_pass_through_variant(mpo_variant)
+                else:
+                    module_type = "lc_breakout_2xmpo12_to_12xlcduplex"
+                    variant_a = lc_variant
+                    variant_b = _complement_lc_breakout_variant(lc_variant)
+
+                for _ in range(count):
+                    left = reserve_aggregatable_port(
+                        rack_id=a,
+                        endpoint=endpoint,
+                        fiber_kind=fiber_kind,
+                        side=0,
+                        module_type=module_type,
+                        polarity_variant=variant_a,
+                    )
+                    right = reserve_aggregatable_port(
+                        rack_id=b,
+                        endpoint=endpoint,
+                        fiber_kind=fiber_kind,
+                        side=1,
+                        module_type=module_type,
+                        polarity_variant=variant_b,
+                    )
+                    if left is None or right is None:
+                        break
+                    slot_a, src_port = left
+                    slot_b, dst_port = right
+                    aggregatable_pair_usage[
+                        (a, b, endpoint, slot_a.u, slot_a.slot, slot_b.u, slot_b.slot)
+                    ] += 1
+                    if endpoint == "mpo12":
+                        src_core = src_port
+                        dst_core = _map_mpo_pass_through_dst_core(
+                            src_core,
+                            src_variant=variant_a,
+                            dst_variant=variant_b,
+                        )
+                        cable = _build_cable(
+                            "mpo12",
+                            slot_a,
+                            src_port,
+                            slot_b,
+                            dst_port,
+                            polarity=mpo_polarity,
+                        )
+                        cables.setdefault(cable["cable_id"], cable)
+                        sessions.append(
+                            _session(
+                                "mpo12",
+                                cable["cable_id"],
+                                module_type,
+                                slot_a,
+                                src_port,
+                                slot_b,
+                                dst_port,
+                                src_core=src_core,
+                                dst_core=dst_core,
+                            )
+                        )
+                    else:
+                        mpo_local = src_port if src_port <= 6 else src_port - 6
+                        fibers = LC_FIBER_MAP[mpo_local]
+                        cable = _build_cable(
+                            endpoint,
+                            slot_a,
+                            src_port,
+                            slot_b,
+                            dst_port,
+                            polarity=lc_polarity,
+                            fiber_kind=fiber_kind,
+                        )
+                        cables.setdefault(cable["cable_id"], cable)
+                        sessions.append(
+                            _session(
+                                endpoint,
+                                cable["cable_id"],
+                                module_type,
+                                slot_a,
+                                src_port,
+                                slot_b,
+                                dst_port,
+                                fiber_pair=fibers,
+                            )
+                        )
+
+    for (a, b, endpoint, src_u, src_slot, dst_u, dst_slot), used in sorted(
+        aggregatable_pair_usage.items(),
+        key=lambda item: (
+            pair_sort_key(item[0][0]),
+            pair_sort_key(item[0][1]),
+            item[0][2],
+            item[0][3],
+            item[0][4],
+            item[0][5],
+            item[0][6],
+        ),
+    ):
+        pair_details[f"{a}__{b}"].append(
+            {
+                "type": endpoint,
+                "slot_a": {"rack_id": a, "u": src_u, "slot": src_slot},
+                "slot_b": {"rack_id": b, "u": dst_u, "slot": dst_slot},
+                "used": used,
+            }
+        )
 
     for a, b in sorted_pairs:
         count = normalized_demands[(a, b)].get("utp_rj45", 0)

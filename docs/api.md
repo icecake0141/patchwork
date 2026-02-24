@@ -75,6 +75,7 @@ This document describes the interfaces and allocation behavior implemented in th
 - `demands[].src` and `demands[].dst` must be different.
 - Every demand must reference existing rack IDs.
 - `count` must be greater than 0.
+- `aggregatable` (optional, default `false`) can be set per demand.
 - Unsupported endpoint types / ordering categories / sort strategies / allocation directions are rejected.
 
 ## Revision Persistence Rules
@@ -116,6 +117,8 @@ This document describes the interfaces and allocation behavior implemented in th
   - `smf_lc_duplex`
   - `mpo12`
   - `utp_rj45`
+- For MPO/LC demands, `aggregatable=true` keeps demand-level intent and allows slot sharing across peers for the same endpoint type.
+- Default behavior (`aggregatable=false`) keeps peer-dedicated allocation.
 
 ### 2) Decide processing order
 - Pair iteration order is controlled by `settings.ordering.peer_sort`:
@@ -142,6 +145,7 @@ This document describes the interfaces and allocation behavior implemented in th
   - Session port mapping uses one-to-one module ports (`P1↔P1`, `P2↔P2`, ...).
   - Internal core mapping preserves Method-B reverse (`C1↔C12`, `C2↔C11`, ...).
   - Create one cable per used port with Type-B trunk polarity.
+- With `aggregatable=true`, slots are reused within each rack for the same endpoint type and modules are marked shared (`dedicated=0`, `peer_rack_id=null`).
 
 #### LC breakout (`lc_mmf` / `lc_smf`)
 - Required slots per rack pair: `ceil(count / 12)`.
@@ -154,6 +158,7 @@ This document describes the interfaces and allocation behavior implemented in th
   - Front LC port pairing remains one-to-one (`P1↔P1`, `P2↔P2`, ...); polarity flip is inside duplex core pairs.
   - Fiber-pair mapping per MPO local port:
     - 1->(1,2), 2->(3,4), 3->(5,6), 4->(7,8), 5->(9,10), 6->(11,12)
+- With `aggregatable=true`, slots are reused within each rack for the same endpoint type and modules are marked shared (`dedicated=0`, `peer_rack_id=null`).
 
 #### UTP (`utp` -> `utp_rj45` demands)
 - UTP is allocated by rack-peer counts at the point where `utp` appears in priority.
@@ -260,6 +265,7 @@ See `examples/quick-start` for end-to-end examples.
 - `demands[].src` と `demands[].dst` は同一不可です。
 - 各 demand は既存ラック ID を参照している必要があります。
 - `count` は 0 より大きい必要があります。
+- `aggregatable`（任意。既定値 `false`）を demand ごとに設定できます。
 - 未対応の endpoint_type / ordering category / sort strategy / allocation_direction は拒否されます。
 
 ### リビジョン永続化ルール

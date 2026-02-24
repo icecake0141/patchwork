@@ -37,6 +37,7 @@ class DemandModel(BaseModel):
     dst: str
     endpoint_type: Literal["mmf_lc_duplex", "smf_lc_duplex", "mpo12", "utp_rj45"]
     count: int = Field(gt=0)
+    aggregatable: bool = False
 
     @model_validator(mode="after")
     def validate_src_dst(self) -> "DemandModel":
