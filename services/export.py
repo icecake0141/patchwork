@@ -598,7 +598,7 @@ def wiring_svg(
                 f'<text x="{col_dst_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
             )
             lines.append(
-                f'<g><title>{cable_label_full}</title><text x="{col_cable_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text></g>'
+                f'<g><title>{cable_label_full}</title><text x="{col_cable_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937" text-decoration="underline" style="cursor:pointer" data-cable-id="{escape(str(session["cable_id"]), quote=True)}" data-cable-label="{cable_label_full}">{cable_label}</text></g>'
             )
 
         y += group_header_h + len(sessions) * row_h + group_gap

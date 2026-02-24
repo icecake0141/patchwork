@@ -411,6 +411,36 @@
   })();
 
   (() => {
+    const copyText = async (text) => {
+      if (!text) return false;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      return false;
+    };
+
+    document.addEventListener("click", async (event) => {
+      const target = event.target.closest("text[data-cable-id]");
+      if (!target) return;
+      const cableId = target.getAttribute("data-cable-id") || "";
+      if (!cableId) return;
+      const label = target.getAttribute("data-cable-label") || cableId;
+      try {
+        const ok = await copyText(cableId);
+        if (!ok) return;
+        const previous = target.getAttribute("data-copy-feedback") || "";
+        target.setAttribute("data-copy-feedback", target.textContent || "");
+        target.textContent = `copied: ${cableId}`;
+        setTimeout(() => {
+          target.textContent = previous || label;
+        }, 1000);
+      } catch (_error) {
+      }
+    });
+  })();
+
+  (() => {
     const mediaColors = {
       mmf_lc_duplex: "#00FFFF",
       smf_lc_duplex: "#FFD600",
