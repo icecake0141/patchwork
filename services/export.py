@@ -48,9 +48,9 @@ BOM_COLUMNS = [
 ]
 
 MEDIA_COLORS = {
-    "mmf_lc_duplex": "#2563eb",
-    "smf_lc_duplex": "#16a34a",
-    "mpo12": "#7c3aed",
+    "mmf_lc_duplex": "#00FFFF",
+    "smf_lc_duplex": "#FFD600",
+    "mpo12": "#FF00FF",
     "utp_rj45": "#ea580c",
 }
 
@@ -63,7 +63,7 @@ SLOT_PORT_CAPACITY = {
 RACK_OCCUPANCY_MODULE_COLORS = {
     "empty": "#555555",
     "mpo12_pass_through_12port": "#FF00FF",
-    "lc_breakout_2xmpo12_to_12xlcduplex": "#87CEEB",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "#00FFFF",
     "utp_6xrj45": "#90EE90",
 }
 
@@ -160,8 +160,33 @@ def _ordered_ports_for_layout(profile: dict[str, Any], capacity: int) -> list[in
     return list(range(1, capacity + 1))
 
 
-def _slot_state_theme(module_type: str, slot_state: str) -> dict[str, str]:
-    base = RACK_OCCUPANCY_MODULE_COLORS.get(module_type, "#94a3b8")
+def _wire_color_for_media(media: str, fiber_kind: str | None = None) -> str:
+    media_key = str(media)
+    fiber_key = str(fiber_kind or "").lower()
+    if media_key == "mmf_lc_duplex":
+        return "#00FFFF"
+    if media_key == "smf_lc_duplex":
+        return "#FFD600"
+    if media_key == "mpo12":
+        if fiber_key == "smf":
+            return "#FFD600"
+        return "#FF00FF"
+    if media_key == "utp_rj45":
+        return "#ea580c"
+    return "#334155"
+
+
+def _module_base_color(module_type: str, fiber_kind: str | None = None) -> str:
+    module_key = str(module_type)
+    fiber_key = str(fiber_kind or "").lower()
+    if module_key == "mpo12_pass_through_12port":
+        return "#FFD600" if fiber_key == "smf" else "#FF00FF"
+    if module_key == "lc_breakout_2xmpo12_to_12xlcduplex":
+        return "#FFD600" if fiber_key == "smf" else "#00FFFF"
+    return RACK_OCCUPANCY_MODULE_COLORS.get(module_key, "#94a3b8")
+
+
+def _slot_state_theme(base: str, slot_state: str) -> dict[str, str]:
     if slot_state == "full":
         slot_opacity = "0.26"
         front_opacity = "0.18"
@@ -403,6 +428,10 @@ def result_json(result: dict[str, Any]) -> str:
 
 def wiring_svg(result: dict[str, Any]) -> str:
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", 0) for c in result.get("cables", [])}
+    cable_fiber_kind_by_id = {
+        str(cable["cable_id"]): str(cable.get("fiber_kind") or "").lower()
+        for cable in result.get("cables", [])
+    }
     module_type_by_slot: dict[tuple[str, int, int], str] = {
         (
             str(module["rack_id"]),
@@ -429,13 +458,6 @@ def wiring_svg(result: dict[str, Any]) -> str:
     for key in sorted_group_keys:
         groups[key].sort(key=lambda session: (session["src_port"], session["dst_port"]))
 
-    media_color = {
-        "mmf_lc_duplex": "#2563eb",
-        "smf_lc_duplex": "#16a34a",
-        "mpo12": "#7c3aed",
-        "utp_rj45": "#ea580c",
-    }
-
     width = 1360
     top = 110
     group_header_h = 28
@@ -460,7 +482,12 @@ def wiring_svg(result: dict[str, Any]) -> str:
     y = top
     for src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media in sorted_group_keys:
         sessions = groups[(src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media)]
-        stroke = media_color.get(media, "#334155")
+        group_fiber_kind = ""
+        for session in sessions:
+            group_fiber_kind = cable_fiber_kind_by_id.get(str(session.get("cable_id", "")), "")
+            if group_fiber_kind:
+                break
+        stroke = _wire_color_for_media(media, group_fiber_kind)
         src_module_type = module_type_by_slot.get((src_rack, src_u, src_slot), "empty")
         dst_module_type = module_type_by_slot.get((dst_rack, dst_u, dst_slot), "empty")
         use_mpo_pass_through_cable_view = (
@@ -530,6 +557,10 @@ def integrated_wiring_svg(
 
     selected_media = set(media_filter) if media_filter is not None else set(MEDIA_COLORS.keys())
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", "") for c in result.get("cables", [])}
+    cable_fiber_kind_by_id = {
+        str(cable["cable_id"]): str(cable.get("fiber_kind") or "").lower()
+        for cable in result.get("cables", [])
+    }
     slot_used_ports: dict[tuple[str, int, int], set[int]] = defaultdict(set)
     module_capacity_by_slot: dict[tuple[str, int, int], int] = {
         (
@@ -552,6 +583,13 @@ def integrated_wiring_svg(
             int(module["slot"]),
         ): _module_layout_profile(
             str(module.get("module_type", "")),
+            str(module.get("fiber_kind")) if module.get("fiber_kind") else None,
+        )
+        for module in result.get("modules", [])
+    }
+    module_color_by_slot: dict[tuple[str, int, int], str] = {
+        (str(module["rack_id"]), int(module["panel_u"]), int(module["slot"])): _module_base_color(
+            str(module.get("module_type", "empty")),
             str(module.get("fiber_kind")) if module.get("fiber_kind") else None,
         )
         for module in result.get("modules", [])
@@ -751,8 +789,12 @@ def integrated_wiring_svg(
                     slot_state = "full"
                 else:
                     slot_state = "partial"
+            slot_base_color = module_color_by_slot.get(
+                (rack_id, u_value, slot_value),
+                _module_base_color(slot_module_type),
+            )
             slot_theme = _slot_state_theme(
-                slot_module_type,
+                slot_base_color,
                 slot_state,
             )
 
@@ -936,7 +978,12 @@ def integrated_wiring_svg(
     for group_key in sorted_group_keys:
         src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media = group_key
         sessions = grouped_sessions[group_key]
-        color = MEDIA_COLORS.get(media, "#334155")
+        group_fiber_kind = ""
+        for session in sessions:
+            group_fiber_kind = cable_fiber_kind_by_id.get(str(session.get("cable_id", "")), "")
+            if group_fiber_kind:
+                break
+        color = _wire_color_for_media(media, group_fiber_kind)
 
         src_pos = node_positions.get((src_rack, src_u, src_slot))
         dst_pos = node_positions.get((dst_rack, dst_u, dst_slot))
@@ -1569,9 +1616,16 @@ def integrated_wiring_interactive_svg(result: dict[str, Any], mode: str = "aggre
         ]
     )
     anchor_label_controls = '<label style="display:inline-flex;gap:4px;align-items:center;"><input type="checkbox" data-role="integrated-anchor-label-toggle" checked="checked" />show P# in anchor box</label>'
+    legend_entries = [
+        ("MMF (Aqua)", "mmf_lc_duplex", None),
+        ("SMF (Yellow)", "smf_lc_duplex", None),
+        ("MPO MMF (Fuchsia)", "mpo12", "mmf"),
+        ("MPO SMF (Yellow)", "mpo12", "smf"),
+        ("UTP", "utp_rj45", None),
+    ]
     legend_items = "".join(
-        f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{MEDIA_COLORS.get(media, "#334155")};"></span>{escape(media)}</span>'
-        for media in media_types
+        f'<span style="display:inline-flex;gap:4px;align-items:center;"><span style="width:10px;height:10px;border-radius:2px;border:1px solid #9ca3af;background:{_wire_color_for_media(media, fiber_kind)};"></span>{escape(label)}</span>'
+        for label, media, fiber_kind in legend_entries
     )
 
     controls_w = max(320.0, width - 32.0)

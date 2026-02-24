@@ -19,7 +19,7 @@ MODULE_LABELS = {
 MODULE_COLORS = {
     "empty": "#555555",
     "mpo12_pass_through_12port": "#FF00FF",
-    "lc_breakout_2xmpo12_to_12xlcduplex": "#87CEEB",
+    "lc_breakout_2xmpo12_to_12xlcduplex": "#00FFFF",
     "utp_6xrj45": "#90EE90",
 }
 
@@ -51,6 +51,18 @@ def _module_display_label(module: dict[str, Any] | None) -> str:
     if variant in {"A", "AF", "B"}:
         return f"{label} Type-{variant}"
     return f"{label} {variant}"
+
+
+def _module_fill_color(module: dict[str, Any] | None) -> str:
+    if not module:
+        return MODULE_COLORS.get("empty", "#eef")
+    module_type = str(module.get("module_type", "empty"))
+    fiber_kind = str(module.get("fiber_kind") or "").lower()
+    if module_type == "lc_breakout_2xmpo12_to_12xlcduplex":
+        return "#FFD600" if fiber_kind == "smf" else "#00FFFF"
+    if module_type == "mpo12_pass_through_12port":
+        return "#FFD600" if fiber_kind == "smf" else "#FF00FF"
+    return MODULE_COLORS.get(module_type, "#eef")
 
 
 def rack_slot_width(result: dict[str, Any], rack_id: str | None = None) -> int:
@@ -115,7 +127,7 @@ def render_rack_panels_svg(
             mod = by_uslot.get((panel["u"], slot))
             module_type = mod["module_type"] if mod else "empty"
             label = _module_display_label(mod)
-            fill_color = MODULE_COLORS.get(module_type, "#eef")
+            fill_color = _module_fill_color(mod)
             lines.append(
                 f'<rect x="{x}" y="{y - 12}" width="{effective_slot_width}" height="18" fill="{fill_color}" stroke="#225"/>'
             )
