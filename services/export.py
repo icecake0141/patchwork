@@ -446,7 +446,9 @@ def result_json(result: dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False, indent=2, default=str)
 
 
-def wiring_svg(result: dict[str, Any]) -> str:
+def wiring_svg(
+    result: dict[str, Any], show_title: bool = True, shorten_cable_id: bool = False
+) -> str:
     cable_seq_map = {c["cable_id"]: c.get("cable_seq", 0) for c in result.get("cables", [])}
     cable_fiber_kind_by_id = {
         str(cable["cable_id"]): str(cable.get("fiber_kind") or "").lower()
@@ -490,11 +492,20 @@ def wiring_svg(result: dict[str, Any]) -> str:
         for session in sessions:
             cable_seq = cable_seq_map.get(session["cable_id"], "")
             cable_label = f"#{cable_seq} {session['cable_id']}"
+            if shorten_cable_id and len(cable_label) > 24:
+                cable_label = f"{cable_label[:23]}…"
             max_cable_label_chars = max(max_cable_label_chars, len(cable_label))
 
     cable_col_w = max(170, int(max_cable_label_chars * 6.2 + 24))
     width = max(1180, col_cable_x + cable_col_w + 16)
-    top = 110
+    if show_title:
+        top = 110
+        subtitle_y = 52
+        header_y = 74
+    else:
+        top = 88
+        subtitle_y = 34
+        header_y = 56
     group_header_h = 28
     row_h = 18
     group_gap = 16
@@ -506,13 +517,20 @@ def wiring_svg(result: dict[str, Any]) -> str:
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
         '<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>',
-        '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Cable Wiring Diagram</text>',
-        '<text x="20" y="52" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair, sorted by source port number.</text>',
-        '<text x="20" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Src panel/slot</text>',
-        f'<text x="{col_map_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
-        f'<text x="{col_dst_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
-        f'<text x="{col_cable_x}" y="74" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable ID</text>',
     ]
+    if show_title:
+        lines.append(
+            '<text x="20" y="30" font-size="20" font-family="Arial, sans-serif" font-weight="bold">Cable Wiring Diagram</text>'
+        )
+    lines.extend(
+        [
+            f'<text x="20" y="{subtitle_y}" font-size="12" fill="#4b5563" font-family="Arial, sans-serif">Grouped by panel/slot pair, sorted by source port number.</text>',
+            f'<text x="20" y="{header_y}" font-size="12" font-family="Arial, sans-serif" fill="#111827">Src panel/slot</text>',
+            f'<text x="{col_map_x}" y="{header_y}" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable / Media / Port mapping</text>',
+            f'<text x="{col_dst_x}" y="{header_y}" font-size="12" font-family="Arial, sans-serif" fill="#111827">Dst panel/slot</text>',
+            f'<text x="{col_cable_x}" y="{header_y}" font-size="12" font-family="Arial, sans-serif" fill="#111827">Cable ID</text>',
+        ]
+    )
 
     y = top
     for src_rack, src_u, src_slot, dst_rack, dst_u, dst_slot, media in sorted_group_keys:
@@ -555,7 +573,12 @@ def wiring_svg(result: dict[str, Any]) -> str:
             src_port = session["src_port"]
             dst_port = src_port if use_mpo_pass_through_cable_view else session["dst_port"]
             cable_seq = cable_seq_map.get(session["cable_id"], "")
-            cable_label = escape(f"#{cable_seq} {session['cable_id']}")
+            cable_label_raw = f"#{cable_seq} {session['cable_id']}"
+            cable_label_display = cable_label_raw
+            if shorten_cable_id and len(cable_label_display) > 24:
+                cable_label_display = f"{cable_label_display[:23]}…"
+            cable_label = escape(cable_label_display)
+            cable_label_full = escape(cable_label_raw)
             mapping_label = escape(f"P{src_port}→P{dst_port}")
             mapping_label_w = max(48.0, len(f"P{src_port}→P{dst_port}") * 6.4)
 
@@ -575,7 +598,7 @@ def wiring_svg(result: dict[str, Any]) -> str:
                 f'<text x="{col_dst_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">P{dst_port}</text>'
             )
             lines.append(
-                f'<text x="{col_cable_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text>'
+                f'<g><title>{cable_label_full}</title><text x="{col_cable_x}" y="{line_y}" font-size="11" font-family="Arial, sans-serif" fill="#1f2937">{cable_label}</text></g>'
             )
 
         y += group_header_h + len(sessions) * row_h + group_gap

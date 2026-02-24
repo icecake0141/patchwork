@@ -97,7 +97,7 @@ def create_app() -> Flask:
             rack: render_rack_panels_svg(result, rack, slot_width=uniform_slot_width)
             for rack in racks
         }
-        wiring_svg_text = wiring_svg(result)
+        wiring_svg_text = wiring_svg(result, show_title=False, shorten_cable_id=True)
         integrated_route_modes = ["direct", "detour", "highway", "stagger"]
         integrated_wiring_svgs = {
             route_mode: {
@@ -184,7 +184,7 @@ def create_app() -> Flask:
                 rack: render_rack_panels_svg(result, rack, slot_width=uniform_slot_width)
                 for rack in racks
             }
-            wiring_svg_text = wiring_svg(result)
+            wiring_svg_text = wiring_svg(result, show_title=False, shorten_cable_id=True)
             integrated_wiring_svgs = {
                 route_mode: {
                     "aggregate": integrated_wiring_svg(
