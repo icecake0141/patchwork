@@ -92,7 +92,7 @@ def render_topology_svg(result: dict[str, Any]) -> str:
         for i, ((a, b, m), c) in enumerate(sorted(agg.items()))
     )
     height = 40 + len(agg) * 18
-    return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}"><text x="10" y="15" font-size="14">Rack Topology</text>{rows}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}"><text x="10" y="15" font-size="14">Rack Topology (Demands)</text>{rows}</svg>'
 
 
 def render_rack_panels_svg(
