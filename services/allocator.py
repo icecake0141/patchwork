@@ -232,9 +232,7 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     normalized_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )
-    dedicated_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
+    dedicated_demands: dict[tuple[str, str], dict[str, int]] = defaultdict(lambda: defaultdict(int))
     aggregatable_demands: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for d in project.demands:
         pk = pair_key(d.src, d.dst)

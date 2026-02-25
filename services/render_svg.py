@@ -154,7 +154,9 @@ def render_rack_panels_svg(
             )
             text_color = "#fff" if module_type == "empty" else "#000"
             line1, line2 = _split_slot_label(slot, label)
-            lines.append(f'<text x="{x + 4}" y="{y - 2}" font-size="9" fill="{text_color}">{line1}</text>')
+            lines.append(
+                f'<text x="{x + 4}" y="{y - 2}" font-size="9" fill="{text_color}">{line1}</text>'
+            )
             if line2:
                 lines.append(
                     f'<text x="{x + 4}" y="{y + 8}" font-size="9" fill="{text_color}">{line2}</text>'
