@@ -203,9 +203,7 @@ def test_lc_demands_can_share_slots_when_aggregatable() -> None:
     assert r01_lc[0]["dedicated"] == 0
 
     r01_sessions = [
-        s
-        for s in result["sessions"]
-        if s["media"] == "mmf_lc_duplex" and s["src_rack"] == "R01"
+        s for s in result["sessions"] if s["media"] == "mmf_lc_duplex" and s["src_rack"] == "R01"
     ]
     assert len(r01_sessions) == 2
     assert {s["src_slot"] for s in r01_sessions} == {r01_lc[0]["slot"]}
