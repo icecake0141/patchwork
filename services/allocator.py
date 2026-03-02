@@ -277,6 +277,10 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
     aggregatable_slot_pools: dict[tuple[str, str, str, int], list[dict[str, Any]]] = defaultdict(
         list
     )
+    aggregatable_lc_slot_pools: dict[
+        tuple[str, str, str, int],
+        list[dict[str, Any]],
+    ] = defaultdict(list)
     aggregatable_pair_usage: dict[tuple[str, str, str, int, int, int, int], int] = defaultdict(int)
 
     def reserve_aggregatable_port(
@@ -316,6 +320,73 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
         )
         slot_states.append({"slot": slot, "used_ports": 1})
         return slot, 1
+
+    def reserve_aggregatable_lc_port(
+        rack_id: str,
+        peer_rack_id: str,
+        endpoint: str,
+        fiber_kind: str | None,
+        side: int,
+        module_type: str,
+        polarity_variant: str,
+        preferred_group: int | None = None,
+    ) -> tuple[SlotRef, int, int] | None:
+        pool_key = (rack_id, endpoint, fiber_kind or "", side)
+        slot_states = aggregatable_lc_slot_pools[pool_key]
+        groups = [preferred_group] if preferred_group in {1, 2} else [1, 2]
+
+        for group in groups:
+            for state in slot_states:
+                group_state = state["groups"][group]
+                if group_state["peer_rack_id"] == peer_rack_id and group_state["used_ports"] < 6:
+                    group_state["used_ports"] += 1
+                    local_port = int(group_state["used_ports"])
+                    absolute_port = local_port if group == 1 else local_port + 6
+                    return state["slot"], absolute_port, group
+
+        for group in groups:
+            for state in slot_states:
+                group_state = state["groups"][group]
+                if group_state["peer_rack_id"] is None:
+                    group_state["peer_rack_id"] = peer_rack_id
+                    group_state["used_ports"] = 1
+                    absolute_port = 1 if group == 1 else 7
+                    return state["slot"], absolute_port, group
+
+        try:
+            slot = rack_allocators[rack_id].reserve_slot()
+        except RackOverflowError as exc:
+            errors.append(str(exc))
+            return None
+        modules.append(
+            {
+                "module_id": deterministic_id(
+                    "mod",
+                    f"{rack_id}|{slot.u}|{slot.slot}|{endpoint}|agg|{side}",
+                ),
+                "rack_id": rack_id,
+                "panel_u": slot.u,
+                "slot": slot.slot,
+                "module_type": module_type,
+                "fiber_kind": fiber_kind,
+                "polarity_variant": polarity_variant,
+                "peer_rack_id": None,
+                "dedicated": 0,
+            }
+        )
+        selected_group = groups[0]
+        state = {
+            "slot": slot,
+            "groups": {
+                1: {"peer_rack_id": None, "used_ports": 0},
+                2: {"peer_rack_id": None, "used_ports": 0},
+            },
+        }
+        state["groups"][selected_group]["peer_rack_id"] = peer_rack_id
+        state["groups"][selected_group]["used_ports"] = 1
+        slot_states.append(state)
+        absolute_port = 1 if selected_group == 1 else 7
+        return slot, absolute_port, selected_group
 
     for category in priority:
         if category == "utp":
@@ -556,22 +627,53 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                     variant_b = _complement_lc_breakout_variant(lc_variant)
 
                 for _ in range(count):
-                    left = reserve_aggregatable_port(
-                        rack_id=a,
-                        endpoint=endpoint,
-                        fiber_kind=fiber_kind,
-                        side=0,
-                        module_type=module_type,
-                        polarity_variant=variant_a,
-                    )
-                    right = reserve_aggregatable_port(
-                        rack_id=b,
-                        endpoint=endpoint,
-                        fiber_kind=fiber_kind,
-                        side=1,
-                        module_type=module_type,
-                        polarity_variant=variant_b,
-                    )
+                    if endpoint == "mpo12":
+                        left = reserve_aggregatable_port(
+                            rack_id=a,
+                            endpoint=endpoint,
+                            fiber_kind=fiber_kind,
+                            side=0,
+                            module_type=module_type,
+                            polarity_variant=variant_a,
+                        )
+                        right = reserve_aggregatable_port(
+                            rack_id=b,
+                            endpoint=endpoint,
+                            fiber_kind=fiber_kind,
+                            side=1,
+                            module_type=module_type,
+                            polarity_variant=variant_b,
+                        )
+                        left_group: int | None = None
+                        right_group: int | None = None
+                    else:
+                        left_lc = reserve_aggregatable_lc_port(
+                            rack_id=a,
+                            peer_rack_id=b,
+                            endpoint=endpoint,
+                            fiber_kind=fiber_kind,
+                            side=0,
+                            module_type=module_type,
+                            polarity_variant=variant_a,
+                        )
+                        if left_lc is None:
+                            break
+                        slot_a, src_port, left_group = left_lc
+                        right_lc = reserve_aggregatable_lc_port(
+                            rack_id=b,
+                            peer_rack_id=a,
+                            endpoint=endpoint,
+                            fiber_kind=fiber_kind,
+                            side=1,
+                            module_type=module_type,
+                            polarity_variant=variant_b,
+                            preferred_group=left_group,
+                        )
+                        if right_lc is None:
+                            break
+                        slot_b, dst_port, right_group = right_lc
+                        left = (slot_a, src_port)
+                        right = (slot_b, dst_port)
                     if left is None or right is None:
                         break
                     slot_a, src_port = left
@@ -614,9 +716,9 @@ def allocate(project: ProjectInput) -> dict[str, Any]:
                         cable = _build_cable(
                             endpoint,
                             slot_a,
-                            src_port,
+                            left_group if left_group is not None else (1 if src_port <= 6 else 2),
                             slot_b,
-                            dst_port,
+                            right_group if right_group is not None else (1 if dst_port <= 6 else 2),
                             polarity=lc_polarity,
                             fiber_kind=fiber_kind,
                         )

@@ -146,6 +146,7 @@ This document describes the interfaces and allocation behavior implemented in th
   - Internal core mapping preserves Method-B reverse (`C1↔C12`, `C2↔C11`, ...).
   - Create one cable per used port with Type-B trunk polarity.
 - With `aggregatable=true`, slots are reused within each rack for the same endpoint type and modules are marked shared (`dedicated=0`, `peer_rack_id=null`).
+  - For LC breakout, each rear MPO group (`MPO1`/`MPO2`) is pinned to a single peer rack to avoid multiple trunks sharing the same rear group.
 
 #### LC breakout (`lc_mmf` / `lc_smf`)
 - Required slots per rack pair: `ceil(count / 12)`.
