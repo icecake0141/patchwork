@@ -53,6 +53,7 @@ def _require_docker_compose() -> list[str]:
     cmd = _compose_cmd()
     if cmd is None:
         pytest.skip("Docker Compose is unavailable or Docker daemon is not accessible")
+    assert cmd is not None
     return cmd
 
 

@@ -207,3 +207,50 @@ def test_lc_demands_can_share_slots_when_aggregatable() -> None:
     ]
     assert len(r01_sessions) == 2
     assert {s["src_slot"] for s in r01_sessions} == {r01_lc[0]["slot"]}
+    assert {s["src_port"] for s in r01_sessions} == {1, 7}
+
+
+def test_lc_aggregatable_does_not_put_multiple_trunks_on_same_rear_group() -> None:
+    payload = _base()
+    payload["demands"] = [
+        {
+            "id": "D1",
+            "src": "R01",
+            "dst": "R02",
+            "endpoint_type": "mmf_lc_duplex",
+            "count": 1,
+            "aggregatable": True,
+        },
+        {
+            "id": "D2",
+            "src": "R01",
+            "dst": "R03",
+            "endpoint_type": "mmf_lc_duplex",
+            "count": 1,
+            "aggregatable": True,
+        },
+    ]
+    result = allocate(ProjectInput.model_validate(payload))
+
+    rear_group_cables: dict[tuple[str, int, int, int], set[str]] = {}
+    for session in result["sessions"]:
+        if session["media"] != "mmf_lc_duplex":
+            continue
+        src_group = 1 if int(session["src_port"]) <= 6 else 2
+        dst_group = 1 if int(session["dst_port"]) <= 6 else 2
+        src_key = (
+            str(session["src_rack"]),
+            int(session["src_u"]),
+            int(session["src_slot"]),
+            src_group,
+        )
+        dst_key = (
+            str(session["dst_rack"]),
+            int(session["dst_u"]),
+            int(session["dst_slot"]),
+            dst_group,
+        )
+        rear_group_cables.setdefault(src_key, set()).add(str(session["cable_id"]))
+        rear_group_cables.setdefault(dst_key, set()).add(str(session["cable_id"]))
+
+    assert all(len(cable_ids) <= 1 for cable_ids in rear_group_cables.values())
