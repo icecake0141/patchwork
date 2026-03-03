@@ -1,38 +1,18 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
-This file was created or modified with the assistance of an AI (Large Language Model). Review for correctness and security.
+Copyright 2026 Patchwork Authors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
 -->
 
-# Documentation Index
+# Documentation Entry Point
 
-Welcome — this directory contains the project documentation.
-
-Contents
-- `api.md` — API surface and endpoint descriptions.
-- `overview.md` — implementation overview and allocation behavior notes.
-- `integrated-wiring-user-guide.md` — one-page user guide and fixed feature-difference matrix.
-- `index.md` — this file.
-- `quick-start.md` or `examples/quick-start/README.md` — quick start guide.
-- `onboarding/README.en.md` / `onboarding/README.ja.md` — first-time user input/output guide (2-rack and 4-rack scenarios).
-
-For wiring-decision details (for example, how `demands` are mapped to panel `u/slot/port`),
-see `api.md` section **Wiring Decision Logic (Demand -> Panel Placement)**.
-
-Link to main README for setup and validation commands.
-
-## 日本語訳
-
-このディレクトリには、本プロジェクトのドキュメントが含まれています。
-
-内容:
-- `api.md` — API の公開面とエンドポイント説明。
-- `overview.md` — 実装概要と割り当て挙動の補足。
-- `integrated-wiring-user-guide.md` — 利用者向け1ページガイドと機能差分マトリクス。
-- `index.md` — このファイル。
-- `quick-start.md` または `examples/quick-start/README.md` — クイックスタートガイド。
-- `onboarding/README.en.md` / `onboarding/README.ja.md` — 初見ユーザ向けの入出力ガイド（2ラック・4ラックのシナリオ）。
-
-配線決定ロジック（例: `demands` を panel の `u/slot/port` にどう落とし込むか）は、
-`api.md` の **Wiring Decision Logic (Demand -> Panel Placement)** を参照してください。
-
-セットアップ手順と検証コマンドはメイン README を参照してください。
+- English: [Documentation Index](index.en.md)
+- 日本語: [ドキュメント索引](index.ja.md)
