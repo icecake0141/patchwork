@@ -5,5 +5,5 @@ gunicorn==25.1.0
 pydantic==2.12.5
 PyYAML==6.0.3
 pytest==9.0.2
-ruff==0.15.5
+ruff==0.15.9
 mypy==1.19.1
